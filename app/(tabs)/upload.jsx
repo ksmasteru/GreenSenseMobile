@@ -1,3 +1,7 @@
+
+// !! TO ADD ; when adocument alread yexists (same name, size);
+// warn the uploade that uploading a document hat already exist will 'spoil'
+// the response.
 import { useState } from 'react';
 import {
   ActivityIndicator,

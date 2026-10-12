@@ -16,6 +16,7 @@ const ICONS = {
   profile: ['person', 'person-outline'],
   upload: ['cloud-upload', 'cloud-upload-outline'],
   ask: ['chatbubbles', 'chatbubbles-outline'],
+  forms:['document-text', 'document-text-outline']
 } as const;
 
 function tabIcon(name: keyof typeof ICONS) {
@@ -64,10 +65,13 @@ export default function TabLayout() {
         options={{ title: 'Ask', tabBarIcon: tabIcon('ask') }}
       />
       <Tabs.Screen
+        name="forms "
+        options={{title: 'Forms', tabBarIcon: tabIcon('forms')}}
+      />
+      <Tabs.Screen
         name="profile"
         options={{ title: 'Profile', tabBarIcon: tabIcon('profile') }}
       />
-
       {/* Expo Router turns every file in this directory into a route, and any
           route without an explicit <Tabs.Screen> still gets its own tab. These
           three are leftovers — index re-renders Upload, explore is untouched

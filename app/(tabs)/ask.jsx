@@ -107,13 +107,12 @@ const ask = () => {
             setErrorMessage('Something went wrong while getting an answer. Try again.');
             setMessages((prev) => prev.slice(0, -1)); // drop the empty assistant placeholder
         } else {
-            const { text, citations } = apiClient.parseAiResponse(response);
+            const { text} = apiClient.parseAiResponse(response);
             // /ask/image sends an empty citations string, so only add the line
             // when there is a source to show.
-            const fullResponse = citations ? `${text}\n${citations}` : text;
             setMessages((prev) => {
                 const next = [...prev];
-                next[next.length - 1] = { role: 'assistant', text: fullResponse };
+                next[next.length - 1] = { role: 'assistant', text: text };
                 return next;
             });
         }

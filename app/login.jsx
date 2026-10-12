@@ -4,8 +4,8 @@ import {
   Alert,
   ImageBackground,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -54,10 +54,14 @@ import { colors, gradients } from '@/constants/app-theme';
         />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
           style={styles.flex}
         >
-          <SafeAreaView style={styles.safeArea}>
+          <SafeAreaView style={styles.flex}>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
             <Animated.View
               entering={FadeInDown.duration(600).springify()}
               style={styles.header}
@@ -146,6 +150,7 @@ import { colors, gradients } from '@/constants/app-theme';
                 Don&apos;t have an account? <Text style={styles.footerLink}>Sign up</Text>
               </Text>
             </Animated.View>
+            </ScrollView>
           </SafeAreaView>
         </KeyboardAvoidingView>
       </ImageBackground>
@@ -163,8 +168,8 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
   },
-  safeArea: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'flex-end',
     paddingHorizontal: 24,
     paddingBottom: 32,

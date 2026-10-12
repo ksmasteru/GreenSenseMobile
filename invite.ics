@@ -1,0 +1,85 @@
+BEGIN:VCALENDAR
+METHOD:REQUEST
+PRODID:Microsoft Exchange Server 2010
+VERSION:2.0
+BEGIN:VTIMEZONE
+TZID:Morocco Standard Time
+BEGIN:STANDARD
+DTSTART:16010101T020000
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0000
+RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=3SU;BYMONTH=9
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:16010101T020000
+TZOFFSETFROM:+0000
+TZOFFSETTO:+0100
+RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=4SU;BYMONTH=3
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VEVENT
+ORGANIZER;CN=OULHAJ Abdallah:MAILTO:Abdallah.OULHAJ@phova.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=hichamessa
+ khiyy@gmail.com:MAILTO:hichamessakhiyy@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=EL MANSOUR
+ I Achraf:MAILTO:Achraf.ELMANSOURI@ocpgroup.ma
+DESCRIPTION;LANGUAGE=en-US:\n\n\n\n________________________________________
+ ________________________________________\n\nRéunion Microsoft Teams\n\nRe
+ joindre : https://teams.microsoft.com/meet/38204863097157?p=e64u6esyWqSLPB
+ BIXu\nNuméro de réunion : 382 048 630 971 57\nCode secret : gt9FB3kk\n  
+ ________________________________\n\nBesoin d'aide ?<https://aka.ms/JoinTea
+ msMeeting?omkt=fr-FR> | Référence système<https://teams.microsoft.com/l
+ /meetup-join/19%3ameeting_MjcxODY4ODctZTQxNC00ZWI0LTkwMjEtNjNhYmY3OTUxODgw
+ %40thread.v2/0?context=%7b%22Tid%22%3a%22eb5d9cdc-7d97-42ed-82de-41dbcbb69
+ 8fb%22%2c%22Oid%22%3a%223137d707-8c34-4b80-a472-a2a3fd48b852%22%7d>\n\nInv
+ iter quelqu’un à prendre part à une conversation sur un appareil en vi
+ sioconférence\nClé du locataire : ocpgroup@m.webex.com\nNuméro de vidé
+ o : 122 743 983 5\nPlus d’informations<https://www.webex.com/msteams?con
+ fid=1227439835&tenantkey=ocpgroup&domain=m.webex.com>\n\nPour les organisa
+ teurs : Options de réunion<https://teams.microsoft.com/meetingOptions/?or
+ ganizerId=3137d707-8c34-4b80-a472-a2a3fd48b852&tenantId=eb5d9cdc-7d97-42ed
+ -82de-41dbcbb698fb&threadId=19_meeting_MjcxODY4ODctZTQxNC00ZWI0LTkwMjEtNjN
+ hYmY3OTUxODgw@thread.v2&messageId=0&language=fr-FR>\n\n[Company Logo]\nAid
+ e de l'organisation<https://eocp.sharepoint.com/sites/teletravail> | Confi
+ dentialité et sécurité<https://www.ocpgroup.ma/fr/mentions-legales>\n\n
+ __________________________________________________________________________
+ ______\n
+UID:040000008200E00074C5B7101A82E0080000000068708CEA344FDD01000000000000000
+ 010000000334C97F789887A409239B852147213BB
+SUMMARY;LANGUAGE=en-US:Digitalisation des rapports de maintenance
+DTSTART;TZID=Morocco Standard Time:20260928T160000
+DTEND;TZID=Morocco Standard Time:20260928T163000
+CLASS:PUBLIC
+PRIORITY:5
+DTSTAMP:20260928T103418Z
+TRANSP:OPAQUE
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION;LANGUAGE=en-US:
+X-MICROSOFT-CDO-APPT-SEQUENCE:0
+X-MICROSOFT-CDO-OWNERAPPTID:2125063528
+X-MICROSOFT-CDO-BUSYSTATUS:TENTATIVE
+X-MICROSOFT-CDO-INTENDEDSTATUS:BUSY
+X-MICROSOFT-CDO-ALLDAYEVENT:FALSE
+X-MICROSOFT-CDO-IMPORTANCE:1
+X-MICROSOFT-CDO-INSTTYPE:0
+X-MICROSOFT-SKYPETEAMSMEETINGURL:https://teams.microsoft.com/l/meetup-join/
+ 19%3ameeting_MjcxODY4ODctZTQxNC00ZWI0LTkwMjEtNjNhYmY3OTUxODgw%40thread.v2/
+ 0?context=%7b%22Tid%22%3a%22eb5d9cdc-7d97-42ed-82de-41dbcbb698fb%22%2c%22O
+ id%22%3a%223137d707-8c34-4b80-a472-a2a3fd48b852%22%7d
+X-MICROSOFT-SCHEDULINGSERVICEUPDATEURL:https://api.scheduler.teams.microsof
+ t.com/teams/eb5d9cdc-7d97-42ed-82de-41dbcbb698fb/3137d707-8c34-4b80-a472-a
+ 2a3fd48b852/19_meeting_MjcxODY4ODctZTQxNC00ZWI0LTkwMjEtNjNhYmY3OTUxODgw@th
+ read.v2/0
+X-MICROSOFT-SKYPETEAMSPROPERTIES:{"cid":"19:meeting_MjcxODY4ODctZTQxNC00ZWI
+ 0LTkwMjEtNjNhYmY3OTUxODgw@thread.v2"\,"rid":0\,"mid":0\,"uid":null\,"priva
+ te":true\,"type":0\,"ct":null\,"btid":null}
+X-MICROSOFT-DONOTFORWARDMEETING:FALSE
+X-MICROSOFT-DISALLOW-COUNTER:FALSE
+BEGIN:VALARM
+DESCRIPTION:REMINDER
+TRIGGER;RELATED=START:-PT15M
+ACTION:DISPLAY
+END:VALARM
+END:VEVENT
+END:VCALENDAR

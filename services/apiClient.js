@@ -89,13 +89,19 @@ function parseSseBody(raw) {
 // straight through and get empty text back.
 export function parseAiResponse(raw) {
   const answers = Array.isArray(raw?.answer) ? raw.answer : [];
+  const askinteractioniD = raw?.askInteractionId;
+  console.log("askInteractionId is : ", askinteractioniD);
   const text = answers
     .map(({ key, answer }) => (key && key !== '-' ? `${key} ${answer}` : answer))
     .join('\n');
+    console.log("ai answer using rag ", text);
+    if (text.trim() === 'null')
+    {
+      return {text : "I couldn't find an answer to this in your documents."}
+    }
   // A backend build from before citations existed omits the field, and string
   // concatenation would then print a literal "undefined" under the answer.
-  const citations = typeof raw?.citations === 'string' ? raw.citations.trim() : '';
-  return { text, citations };
+  return { text};
 }
 
 // Matches AskController — POST /api/v1/ask (the class-level
