@@ -175,17 +175,27 @@ export async function askImageQuestion(image)
  * are inlined into the JS bundle at build time, so a provider key shipped here
  * would be a published key. Same reason the app has no model credentials today.
  *
- * Deliberately sends no language hint: the provider auto-detects. That is what
- * keeps "add Darija later" a backend-only change with no edit on this side.
+ * Without a language the provider auto-detects, which is what the Ask tab
+ * wants: that keeps "add Darija later" a backend-only change with no edit on
+ * this side. The forms screen passes 'fr', because a few seconds of dictated
+ * comment is too little audio for detection to be reliable.
  *
- * Matches POST /api/v1/ask/transcribe — multipart field `audio`, responding
- * with the AiResponse envelope (transcript as the single "-" answer, empty
- * citations). Read it with parseAiResponse().
+ * `context` tells the transcriber what is being talked about — the forms
+ * screen sends the checklist item, e.g. "Checklist du pont roulant. Point 3 :
+ * Linguet de sécurité du crochet. Anomalie constatée :" — so its words come
+ * out spelled right. Without it the backend uses its pump vocabulary.
+ *
+ * Matches POST /api/v1/ask/transcribe — multipart field `audio` plus optional
+ * `language` and `context`, responding with the AiResponse envelope
+ * (transcript as the single "-" answer, empty citations). Read it with
+ * parseAiResponse().
  *
  * @param {string} uri file:// path produced by expo-audio's recorder
+ * @param {string} [language] ISO-639-1 code such as 'fr'; omit to auto-detect
+ * @param {string} [context] what the speaker is describing, in that language
  * @returns {Promise<object|null>} the raw AiResponse, or null on failure
  */
-export async function transcribeAudio(uri) {
+export async function transcribeAudio(uri, language, context) {
   if (!uri) return null;
 
   const formData = new FormData();
@@ -197,6 +207,8 @@ export async function transcribeAudio(uri) {
     name: 'question.m4a',
     type: 'audio/mp4',
   });
+  if (language) formData.append('language', language);
+  if (context) formData.append('context', context);
 
   try {
     const response = await fetch(API_URL + '/api/v1/ask/transcribe', {
@@ -452,6 +464,75 @@ export async function uploadScannedTextFile(text)
   {
     console.log("an error occured while scanning document");
     return null;
+  }
+}
+
+// Matches CheckListController — GET /api/v1/forms/options.
+// Returns { FormItem: [{ id, title, type }], formsCount } (capital F in
+// FormItem: it's the Java record field name), or null on failure.
+export async function getFormOptions() {
+  try {
+    const response = await fetch(API_URL + '/api/v1/forms/options', {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      console.error('error while fetching form options', response.status);
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('getFormOptions failed', error);
+    return null;
+  }
+}
+
+// Matches CheckListController — GET /api/v1/forms/inspectionForm/{id}.
+// Returns { id, title, type, version, instructions, questions: [{ id,
+// position, labelFr, labelAr, critical, answerType }] }, or null on failure.
+export async function getInspectionForm(id) {
+  try {
+    const response = await fetch(API_URL + `/api/v1/forms/inspectionForm/${id}`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      console.error('error while fetching inspection form', response.status);
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('getInspectionForm failed', error);
+    return null;
+  }
+}
+
+// Matches SubmissionController — POST /api/v1/submissions.
+// Unlike the other calls here, a refusal must reach the screen: the server
+// re-checks the sheet and says why it rejects it ("comment required for
+// question 4"). fetch doesn't throw on a 400 the way axios does on the web,
+// so the body is read on both paths. Resolves to { result: { id, status } }
+// on success, or { errors: [message, …] } on any failure.
+export async function submitChecklist(submission) {
+  try {
+    const response = await fetch(API_URL + '/api/v1/submissions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(submission),
+    });
+    const data = safeParse(await response.text());
+    if (response.ok) return { result: data };
+
+    // ErrorFormat: { message, errors: { field: message } }. A 401/403 from
+    // Spring Security has no such body, hence the fallback.
+    console.error('submission refused', response.status, data);
+    const fieldErrors = data?.errors ? Object.values(data.errors) : [];
+    if (fieldErrors.length) return { errors: fieldErrors };
+    return { errors: [data?.message || `Envoi refusé (${response.status}), réessayer.`] };
+  } catch (error) {
+    console.error('submitChecklist failed', error);
+    return { errors: ['Envoi impossible : vérifier la connexion.'] };
   }
 }
 

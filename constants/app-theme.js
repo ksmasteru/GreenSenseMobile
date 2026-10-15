@@ -48,6 +48,9 @@ export const colors = {
   success: '#6ee7b7',
   successBorder: 'rgba(52,211,153,0.4)',
   successFill: 'rgba(16,185,129,0.12)',
+  warning: '#fcd34d',
+  warningBorder: 'rgba(251,191,36,0.4)',
+  warningFill: 'rgba(245,158,11,0.12)',
 };
 
 // Gradients are arrays because that is what expo-linear-gradient takes. Spread

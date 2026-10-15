@@ -58,7 +58,9 @@ function RootNavigator() {
         </Stack.Protected>
 
         <Stack.Protected guard={isAuthenticated}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />  
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* pushed over the tabs from the Forms tab; draws its own header */}
+          <Stack.Screen name="form/[id]" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>

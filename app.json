@@ -70,7 +70,8 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to record your question."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

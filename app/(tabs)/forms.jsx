@@ -1,88 +1,188 @@
-import { useState } from 'react';
+// List of the active forms, the mobile twin of the web app's Forms.jsx.
+//
+//   options ← GET /api/v1/forms/options   ({ FormItem: [{ id, title, type }], formsCount })
+//   tap     → pushes app/form/[id].jsx, which fetches and fills the chosen form
+//
+// The web page picks a form and shows it underneath on the same page. A phone
+// has no room for both, so the sheet opens as its own screen and the Android
+// back button returns here.
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  Image,
   ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import * as DocumentPicker from 'expo-document-picker';
-import { uploadFile, uploadScannedTextFile } from '../../services/apiClient';
-import * as ImagePicker from 'expo-image-picker'
-import { colors, gradients } from '@/constants/app-theme';
-import { hasNativeScanner, scanDocument } from '../../services/documentScanner';
-import TextRecognition from '@react-native-ml-kit/text-recognition';
-import * as FileSystem from "expo-file-system";
+import { useRouter } from 'expo-router';
+import * as apiClient from '@/services/apiClient';
+import { colors, gradients, radius } from '@/constants/app-theme';
 
+// how each checklist type is shown in the list (same groups as the web picker)
+const TYPE_INFO = {
+  INSPECTION: { group: 'Inspections', badge: 'Inspection', icon: 'search', color: colors.accent },
+  PERMIT: { group: 'Work permits', badge: 'Permit', icon: 'flame', color: colors.warning },
+};
 
 const Forms = () => {
-     
-    return (<View style={styles.container}>
-    <ImageBackground
+  const router = useRouter();
+  const [options, setOptions] = useState(null); // null = still loading
+  const [loadError, setLoadError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadOptions = useCallback(async () => {
+    const data = await apiClient.getFormOptions();
+    setLoadError(!data);
+    setOptions(data?.formsCount > 0 ? data.FormItem : []);
+  }, []);
+
+  // the active forms only need loading once; pull down to reload
+  useEffect(() => {
+    loadOptions();
+  }, [loadOptions]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadOptions();
+    setRefreshing(false);
+  };
+
+  const onRetry = () => {
+    setOptions(null);
+    loadOptions();
+  };
+
+  const openForm = (form) => {
+    Haptics.selectionAsync();
+    router.push(`/form/${form.id}`);
+  };
+
+  // one section per type, skipping the empty ones
+  const groups = Object.keys(TYPE_INFO)
+    .map((type) => ({ type, forms: (options ?? []).filter((f) => f.type === type) }))
+    .filter((g) => g.forms.length > 0);
+
+  const loading = options === null;
+
+  return (
+    <View style={styles.flex}>
+      <ImageBackground
         source={require('../../assets/images/background_login.jpg')}
         resizeMode="cover"
-        style={styles.background}
+        style={styles.flex}
       >
-        <LinearGradient
-          colors={gradients.scrim}
-          style={StyleSheet.absoluteFill}
-        />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
-        >
-          <SafeAreaView style={styles.safeArea}>
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-            >
-              <Animated.View
-                entering={FadeInDown.duration(600).springify()}
-                style={styles.header}
-              ></Animated.View>
-                <View style={styles.logoRing}>
-                  <LinearGradient colors={gradients.accent} style={styles.logo}>
-                    <Ionicons name="cloud-upload-outline" size={40} color={colors.text} />
-                  </LinearGradient>
-                </View>
-            </ScrollView>
-            </SafeAreaView>
-        </KeyboardAvoidingView>
-      </ImageBackground>
-    </View>)
-}
+        <LinearGradient colors={gradients.scrim} style={StyleSheet.absoluteFill} />
+        <SafeAreaView style={styles.flex}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.accent}
+                colors={[colors.accentDeep]}
+              />
+            }
+          >
+            <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.header}>
+              <View style={styles.logoRing}>
+                <LinearGradient colors={gradients.accent} style={styles.logo}>
+                  <Ionicons name="clipboard" size={40} color={colors.text} />
+                </LinearGradient>
+              </View>
+              <Text style={styles.title}>Forms</Text>
+              <Text style={styles.subtitle}>
+                Choose an inspection checklist or a work permit, fill it in, and send it.
+              </Text>
+            </Animated.View>
 
+            <Animated.View entering={FadeInUp.duration(700).delay(150).springify()}>
+              {loading && (
+                <View style={styles.centered}>
+                  <ActivityIndicator color={colors.accent} />
+                  <Text style={styles.hint}>Loading forms…</Text>
+                </View>
+              )}
+
+              {!loading && loadError && (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorText}>
+                    The list of forms could not be loaded. Check your connection and try again.
+                  </Text>
+                  <Pressable
+                    onPress={onRetry}
+                    style={({ pressed }) => [styles.retry, pressed && styles.pressed]}
+                  >
+                    <Ionicons name="refresh" size={16} color={colors.text} />
+                    <Text style={styles.retryText}>Retry</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {!loading && !loadError && groups.length === 0 && <EmptyState />}
+
+              {groups.map(({ type, forms }) => (
+                <View key={type} style={styles.group}>
+                  <Text style={styles.groupHeading}>
+                    {TYPE_INFO[type].group} · {forms.length}
+                  </Text>
+                  {forms.map((form) => (
+                    <FormCard key={form.id} form={form} onPress={() => openForm(form)} />
+                  ))}
+                </View>
+              ))}
+            </Animated.View>
+          </ScrollView>
+        </SafeAreaView>
+      </ImageBackground>
+    </View>
+  );
+};
+
+// one form in the list: type icon, title, badge
+const FormCard = ({ form, onPress }) => {
+  const info = TYPE_INFO[form.type];
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.cardWrap, pressed && styles.pressed]}>
+      <BlurView intensity={45} tint="dark" style={styles.card}>
+        <View style={[styles.cardIcon, { borderColor: info.color }]}>
+          <Ionicons name={info.icon} size={20} color={info.color} />
+        </View>
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {form.title}
+          </Text>
+          <Text style={[styles.badge, { color: info.color }]}>{info.badge}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.textFaint} />
+      </BlurView>
+    </Pressable>
+  );
+};
+
+const EmptyState = () => (
+  <View style={styles.empty}>
+    <Text style={styles.emptyIcon}>📋</Text>
+    <Text style={styles.emptyTitle}>No active form</Text>
+    <Text style={styles.hint}>Forms created on the web app show up here. Pull down to reload.</Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   flex: {
-    flex: 1,
-  },
-  background: {
-    flex: 1,
-  },
-  safeArea: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 32,
   },
@@ -118,144 +218,111 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
+  centered: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 24,
+  },
+  hint: {
+    fontSize: 13,
+    color: colors.textFaint,
+    textAlign: 'center',
+  },
+  group: {
+    marginBottom: 20,
+  },
+  groupHeading: {
+    marginBottom: 10,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.textFaint,
+  },
   cardWrap: {
-    width: '100%',
+    marginBottom: 10,
   },
   card: {
-    borderRadius: 24,
-    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: radius.bubble,
+    padding: 16,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.glassBorder,
   },
-  dropzone: {
+  cardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: colors.glassBorderStrong,
-    paddingVertical: 28,
-    paddingHorizontal: 12,
-    marginBottom: 18,
-  },
-  dropzonePressed: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accentWash,
-  },
-  fileName: {
-    marginTop: 6,
-    maxWidth: '90%',
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  dropzoneText: {
-    marginTop: 6,
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textStrong,
-  },
-  dropzoneHint: {
-    marginTop: 2,
-    fontSize: 12,
-    color: colors.textFaint,
-  },
-  scanPreview: {
-    width: '100%',
-    height: 220,
-    borderRadius: 20,
-    marginBottom: 18,
     backgroundColor: colors.glassFill,
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-  },
-  input: {
+  cardBody: {
     flex: 1,
+    gap: 4,
+  },
+  cardTitle: {
     fontSize: 16,
+    fontWeight: '600',
     color: colors.text,
   },
-  progressWrap: {
-    marginTop: 14,
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-    backgroundColor: colors.track,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: colors.accent,
-  },
-  progressText: {
-    marginTop: 4,
+  badge: {
     fontSize: 12,
-    color: colors.textDim,
+    fontWeight: '700',
   },
-  successBanner: {
-    marginTop: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.successBorder,
-    backgroundColor: colors.successFill,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  successText: {
-    fontSize: 13,
-    color: colors.success,
+  pressed: {
+    opacity: 0.8,
   },
   errorBanner: {
-    marginTop: 14,
-    borderRadius: 14,
+    gap: 10,
+    borderRadius: radius.banner,
     borderWidth: 1,
     borderColor: colors.dangerBorder,
     backgroundColor: colors.dangerFill,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    padding: 12,
   },
   errorText: {
     fontSize: 13,
     color: colors.danger,
   },
-  buttonWrap: {
-    marginTop: 20,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: colors.accentDeep,
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  buttonWrapDisabled: {
-    opacity: 0.5,
-  },
-  buttonPressed: {
-    opacity: 0.85,
-  },
-  button: {
-    paddingVertical: 16,
+  retry: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.glassBorderStrong,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
-  buttonText: {
+  retryText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+  },
+  empty: {
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: radius.card,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.glassBorderStrong,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyIcon: {
+    fontSize: 28,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textStrong,
   },
 });
 
 export default Forms;
-
-
-
-

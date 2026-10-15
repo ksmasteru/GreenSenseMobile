@@ -1,5 +1,6 @@
-// The seam between the Ask tab and "how do words get out of a microphone".
-// ask.jsx calls this and drops the result into its `question` state; it never
+// The seam between the screens that take speech and "how do words get out of a
+// microphone". ask.jsx drops the result into its `question` state and the
+// checklist sheet (app/form/[id].jsx) appends it to a comment; neither ever
 // learns whether the text came from a server, from the device, or from a
 // fallback. Same idea as services/documentScanner.js hiding native-scanner-vs-
 // image-picker behind one API — swapping STT provider, or adding an on-device
@@ -35,17 +36,41 @@ const SPEECH_QUALITY = {
 // round-trip to be handed an empty string back.
 const MIN_DURATION_MS = 700;
 
+// Errors are shown under the mic, so they follow the screen's language: the
+// Ask tab is English, the checklist sheet is French.
+const MESSAGES = {
+  en: {
+    denied: 'Microphone permission denied.',
+    blocked: 'Microphone access is off. Enable it in Settings to ask by voice.',
+    startFailed: 'Could not start recording.',
+    recordFailed: 'Recording failed.',
+    uploadFailed: 'Transcription failed. Check your connection and try again.',
+    noSpeech: 'Could not make out any speech. Try again.',
+  },
+  fr: {
+    denied: 'Accès au micro refusé.',
+    blocked: "Le micro est désactivé. L'activer dans les Réglages pour dicter.",
+    startFailed: "Impossible de démarrer l'enregistrement.",
+    recordFailed: "L'enregistrement a échoué.",
+    uploadFailed: 'Transcription impossible. Vérifier la connexion et réessayer.',
+    noSpeech: 'Aucune parole reconnue. Réessayer.',
+  },
+};
+
 /**
+ * @param {{ language?: string }} [options] ISO-639-1 code sent to the
+ *   transcriber ('fr' on the forms screen); omitted, it auto-detects.
  * @returns {{
  *   status: 'idle'|'recording'|'transcribing',
  *   error: string|null,
  *   durationMillis: number,
  *   start: () => Promise<void>,
- *   stop: () => Promise<string|null>,
+ *   stop: (context?: string) => Promise<string|null>,
  *   clearError: () => void,
  * }}
  */
-export function useVoiceInput() {
+export function useVoiceInput({ language } = {}) {
+  const t = MESSAGES[language] ?? MESSAGES.en;
   const recorder = useAudioRecorder(SPEECH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
 
@@ -61,11 +86,7 @@ export function useVoiceInput() {
     try {
       const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) {
-        setError(
-          permission.canAskAgain
-            ? 'Microphone permission denied.'
-            : 'Microphone access is off. Enable it in Settings to ask by voice.'
-        );
+        setError(permission.canAskAgain ? t.denied : t.blocked);
         return;
       }
 
@@ -79,15 +100,17 @@ export function useVoiceInput() {
       setStatus('recording');
     } catch (e) {
       console.error('useVoiceInput.start failed', e);
-      setError('Could not start recording.');
+      setError(t.startFailed);
       setStatus('idle');
     }
-  }, [recorder]);
+  }, [recorder, t]);
 
   // Resolves to the transcript, or null when there is nothing usable. This
   // hook never writes the question itself — the caller decides what to do with
   // the text, which is what keeps the transcript editable before it is sent.
-  const stop = useCallback(async () => {
+  // `context` (optional) describes what was being talked about; see
+  // apiClient.transcribeAudio.
+  const stop = useCallback(async (context) => {
     if (status !== 'recording') return null;
 
     const heldFor = Date.now() - startedAt.current;
@@ -96,7 +119,7 @@ export function useVoiceInput() {
     } catch (e) {
       console.error('useVoiceInput.stop failed', e);
       setStatus('idle');
-      setError('Recording failed.');
+      setError(t.recordFailed);
       return null;
     } finally {
       // Hand the mic back, or other audio stays stuck in record mode.
@@ -110,18 +133,23 @@ export function useVoiceInput() {
     }
     console.log("recorded audio uri is. : ", uri);
     setStatus('transcribing');
-    const result = await apiClient.transcribeAudio(uri);
+    const result = await apiClient.transcribeAudio(uri, language, context);
     setStatus('idle');
+    // null means the upload itself failed, which is worth telling apart from
+    // "the audio had no words in it".
+    if (!result) {
+      setError(t.uploadFailed);
+      return null;
+    }
     // Citations are dropped on purpose: the transcript becomes the question in
     // the text box, and /ask/transcribe never retrieves documents anyway.
-    // parseAiResponse also takes the null a failed upload returns.
     const text = apiClient.parseAiResponse(result).text.trim();
     if (!text) {
-      setError('Could not make out any speech. Try again.');
+      setError(t.noSpeech);
       return null;
     }
     return text;
-  }, [recorder, status]);
+  }, [recorder, status, language, t]);
 
   return {
     status,
