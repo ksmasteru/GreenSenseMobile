@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
@@ -30,6 +31,8 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { Directory } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as apiClient from '@/services/apiClient';
 import { useVoiceInput } from '@/hooks/use-voice-input';
@@ -291,6 +294,7 @@ export default function FillForm() {
       {submitted ? (
         <>
           <ResultBanner status={result.status} />
+          <ReportPdf submissionId={result.id} />
           <SubmitButton label="Retour aux formulaires" icon="arrow-back" onPress={router.back} />
         </>
       ) : (
@@ -636,6 +640,154 @@ function ErrorList({ errors }) {
   );
 }
 
+// The PDF of the sent sheet. Its pages are shown in place, as images the server renders
+// (the app has no PDF viewer); the buttons get the real file. It's rebuilt from the saved
+// submission on each request — nothing about the PDF is stored.
+function ReportPdf({ submissionId }) {
+  const [pages, setPages] = useState(null); // base64 PNGs; null while loading
+  const [previewError, setPreviewError] = useState(false);
+  const [busy, setBusy] = useState(null); // 'save' | 'share' | null
+  const [message, setMessage] = useState(null); // { ok, text } under the buttons
+  const downloaded = useRef(null); // the PDF File, fetched once for both buttons
+
+  const loadPreview = useCallback(async () => {
+    setPreviewError(false);
+    setPages(null);
+    const data = await apiClient.getSubmissionPreview(submissionId);
+    if (data?.pages?.length) setPages(data.pages);
+    else setPreviewError(true);
+  }, [submissionId]);
+
+  useEffect(() => {
+    loadPreview();
+  }, [loadPreview]);
+
+  const pdfFile = async () => {
+    if (!downloaded.current) downloaded.current = await apiClient.downloadSubmissionPdf(submissionId);
+    return downloaded.current;
+  };
+
+  // Android opens its folder picker (Téléchargements, Drive…): an app may only write
+  // into shared storage where the user points it.
+  const onSave = async () => {
+    setBusy('save');
+    setMessage(null);
+    const file = await pdfFile();
+    if (!file) {
+      setMessage({ ok: false, text: 'Téléchargement impossible. Vérifier la connexion et réessayer.' });
+      setBusy(null);
+      return;
+    }
+    let folder;
+    try {
+      folder = await Directory.pickDirectoryAsync();
+    } catch {
+      setBusy(null); // picker closed without choosing a folder
+      return;
+    }
+    try {
+      folder.createFile(file.name, 'application/pdf').write(await file.bytes());
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setMessage({ ok: true, text: `Enregistré : ${file.name}` });
+    } catch (e) {
+      console.error('saving the pdf failed', e);
+      setMessage({ ok: false, text: "Impossible d'enregistrer dans ce dossier. En choisir un autre." });
+    }
+    setBusy(null);
+  };
+
+  const onShare = async () => {
+    setBusy('share');
+    setMessage(null);
+    const file = await pdfFile();
+    if (!file) {
+      setMessage({ ok: false, text: 'Téléchargement impossible. Vérifier la connexion et réessayer.' });
+    } else if (!(await Sharing.isAvailableAsync())) {
+      setMessage({ ok: false, text: "Le partage n'est pas disponible sur cet appareil." });
+    } else {
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'application/pdf',
+        UTI: 'com.adobe.pdf',
+        dialogTitle: 'Partager le rapport',
+      });
+    }
+    setBusy(null);
+  };
+
+  return (
+    <BlurView intensity={45} tint="dark" style={[styles.card, styles.reportCard]}>
+      <Text style={styles.fieldLabel}>Rapport PDF</Text>
+
+      {pages === null && !previewError && (
+        <View style={styles.reportLoading}>
+          <ActivityIndicator color={colors.accent} />
+          <Text style={styles.metaText}>Génération du rapport…</Text>
+        </View>
+      )}
+
+      {previewError && (
+        <View style={styles.reportLoading}>
+          <Text style={styles.errorText}>L&apos;aperçu n&apos;a pas pu être chargé.</Text>
+          <Pressable
+            onPress={loadPreview}
+            style={({ pressed }) => [styles.retry, pressed && styles.pressed]}
+          >
+            <Ionicons name="refresh" size={16} color={colors.text} />
+            <Text style={styles.retryText}>Réessayer</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {pages?.map((page, i) => (
+        <View key={i} style={styles.reportPage}>
+          <Image
+            source={{ uri: `data:image/png;base64,${page}` }}
+            style={styles.reportPageImage}
+            resizeMode="contain"
+            accessibilityLabel={`Page ${i + 1} du rapport`}
+          />
+        </View>
+      ))}
+      {pages?.length > 1 && (
+        <Text style={[styles.metaText, styles.centeredText]}>{pages.length} pages</Text>
+      )}
+
+      <View style={styles.reportActions}>
+        <Pressable
+          onPress={onSave}
+          disabled={busy !== null}
+          style={({ pressed }) => [styles.reportButton, (pressed || busy) && styles.pressed]}
+        >
+          {busy === 'save' ? (
+            <ActivityIndicator size="small" color={colors.text} />
+          ) : (
+            <Ionicons name="download-outline" size={18} color={colors.text} />
+          )}
+          <Text style={styles.reportButtonText}>Télécharger</Text>
+        </Pressable>
+        <Pressable
+          onPress={onShare}
+          disabled={busy !== null}
+          style={({ pressed }) => [styles.reportButton, (pressed || busy) && styles.pressed]}
+        >
+          {busy === 'share' ? (
+            <ActivityIndicator size="small" color={colors.text} />
+          ) : (
+            <Ionicons name="share-social-outline" size={18} color={colors.text} />
+          )}
+          <Text style={styles.reportButtonText}>Partager</Text>
+        </Pressable>
+      </View>
+
+      {message && (
+        <Text style={[styles.reportMessage, { color: message.ok ? colors.success : colors.danger }]}>
+          {message.text}
+        </Text>
+      )}
+    </BlurView>
+  );
+}
+
 function ResultBanner({ status }) {
   const info = STATUS_INFO[status] ?? STATUS_INFO.DRAFT;
   return (
@@ -970,6 +1122,55 @@ const styles = StyleSheet.create({
     borderRadius: radius.banner,
     borderWidth: 1,
     padding: 12,
+  },
+  reportCard: {
+    marginTop: 12,
+    marginBottom: 0,
+  },
+  reportLoading: {
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 24,
+  },
+  // a sheet of paper: white whatever the theme, A4 proportions like the PDF
+  reportPage: {
+    marginBottom: 10,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+  },
+  reportPageImage: {
+    width: '100%',
+    aspectRatio: 210 / 297,
+  },
+  centeredText: {
+    textAlign: 'center',
+  },
+  reportActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  reportButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.glassBorderStrong,
+    backgroundColor: colors.glassFill,
+    paddingVertical: 12,
+  },
+  reportButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  reportMessage: {
+    marginTop: 10,
+    fontSize: 13,
   },
   resultText: {
     fontSize: 15,

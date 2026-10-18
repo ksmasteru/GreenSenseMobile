@@ -61,6 +61,8 @@ function RootNavigator() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           {/* pushed over the tabs from the Forms tab; draws its own header */}
           <Stack.Screen name="form/[id]" options={{ headerShown: false }} />
+          {/* pushed from the Tasks tab once a task is accepted; has its own tab bar */}
+          <Stack.Screen name="task/[id]" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>

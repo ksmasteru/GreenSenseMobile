@@ -17,6 +17,7 @@ const ICONS = {
   upload: ['cloud-upload', 'cloud-upload-outline'],
   ask: ['chatbubbles', 'chatbubbles-outline'],
   forms: ['clipboard', 'clipboard-outline'],
+  tasks: ['checkbox', 'checkbox-outline'],
 } as const;
 
 function tabIcon(name: keyof typeof ICONS) {
@@ -67,6 +68,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="forms"
         options={{ title: 'Forms', tabBarIcon: tabIcon('forms') }}
+      />
+      <Tabs.Screen
+        name="tasks"
+        options={{ title: 'Tasks', tabBarIcon: tabIcon('tasks') }}
       />
       <Tabs.Screen
         name="profile"

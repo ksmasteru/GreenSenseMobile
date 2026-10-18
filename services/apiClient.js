@@ -536,6 +536,107 @@ export async function submitChecklist(submission) {
   }
 }
 
+// Matches SubmissionController — GET /api/v1/submissions/{id}/preview.
+// Returns { pages: [base64 PNG, …] }: the submission's PDF rendered on the server,
+// one image per page, since the app has no PDF viewer. null on failure.
+export async function getSubmissionPreview(submissionId) {
+  try {
+    const response = await fetch(API_URL + `/api/v1/submissions/${submissionId}/preview`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      console.error('error while fetching the submission preview', response.status);
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('getSubmissionPreview failed', error);
+    return null;
+  }
+}
+
+// Matches SubmissionController — GET /api/v1/submissions/{id}/pdf. Writes the PDF into
+// the app's cache under the server's file name ("checklist-MP1-12-10-2026.pdf") and
+// returns that File, ready to share or copy into a folder; null on failure. Same
+// expo/fetch + response.bytes() route as downloadDocument().
+export async function downloadSubmissionPdf(submissionId) {
+  try {
+    const response = await expoFetch(`${API_URL}/api/v1/submissions/${submissionId}/pdf`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      console.error('error while downloading the submission pdf', response.status);
+      return null;
+    }
+    const disposition = response.headers.get('content-disposition') ?? '';
+    const name = disposition.match(/filename="([^"]+)"/)?.[1] ?? `checklist-${submissionId}.pdf`;
+
+    const file = new File(Paths.cache, name);
+    if (file.exists) file.delete();
+    file.write(await response.bytes());
+    return file;
+  } catch (error) {
+    console.error('downloadSubmissionPdf failed', error);
+    return null;
+  }
+}
+
+// Matches TaskController — GET /api/v1/task/mine.
+// Returns { tasks: [{ id, title, priority, status, equipmentId, location,
+// dueDate, instructions }] }, or null on failure.
+export async function getMyTasks() {
+  try {
+    const response = await fetch(API_URL + '/api/v1/task/mine', {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      console.error('error while fetching my tasks', response.status);
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('getMyTasks failed', error);
+    return null;
+  }
+}
+
+// Matches TaskController — POST /api/v1/task/{id}/start (ASSIGNED -> STARTED).
+// Resolves to true when the server accepted it. fetch doesn't throw on a
+// 409 the way axios does on the web, so response.ok is what decides.
+export async function startTask(taskId) {
+  try {
+    const response = await fetch(API_URL + `/api/v1/task/${taskId}/start`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    if (!response.ok) console.error('start task refused', response.status);
+    return response.ok;
+  } catch (error) {
+    console.error('startTask failed', error);
+    return false;
+  }
+}
+
+// Matches TaskController — POST /api/v1/task/{id}/decline with
+// { reason: StatusReason, comment: string | null }. true when accepted.
+export async function declineTask(taskId, reason, comment) {
+  try {
+    const response = await fetch(API_URL + `/api/v1/task/${taskId}/decline`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reason, comment }),
+    });
+    if (!response.ok) console.error('decline task refused', response.status);
+    return response.ok;
+  } catch (error) {
+    console.error('declineTask failed', error);
+    return false;
+  }
+}
+
 function safeParse(text) {
   try {
     return JSON.parse(text);
