@@ -22,6 +22,8 @@ export function SessionProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [accessToken, setToken] = useState(null);
+  // UserRole on the backend: 'ADMIN' | 'MANAGER' | 'USER' (USER = technician)
+  const [role, setRole] = useState(null);
   // cold start
   useEffect(() => {
     // TODO: this is the startup bootstrap we talked about — call
@@ -29,7 +31,8 @@ export function SessionProvider({ children }) {
     // derive isAuthenticated from whether it returned a token
     const fetchToken = async () => {
       const data = await refreshAccessToken();
-      setToken(data);
+      setToken(data?.accessToken ?? null);
+      setRole(data?.role ?? null);
       setIsAuthenticated(!!data);
       setIsLoading(false);
     }
@@ -41,6 +44,7 @@ export function SessionProvider({ children }) {
     // TODO: persist via setAccessToken/saveRefreshToken, flip isAuthenticated
     setAccessToken(tokens.accessToken);
     await saveRefreshToken(tokens.refreshToken);
+    setRole(tokens.Role ?? null);
     setIsAuthenticated(true);
   };
   // makes a change of state!
@@ -49,11 +53,12 @@ export function SessionProvider({ children }) {
     console.log('loggout launched');
     setAccessToken(null);
     await deleteRefreshToken();
+    setRole(null);
     setIsAuthenticated(false);
   };
 
   // TODO: return <SessionContext.Provider value={...}>{children}</SessionContext.Provider>
   return (
-    <SessionContext.Provider value={{isAuthenticated, isLoading, signIn, signOut}}>{children}</SessionContext.Provider>
+    <SessionContext.Provider value={{isAuthenticated, isLoading, role, signIn, signOut}}>{children}</SessionContext.Provider>
   )
   }

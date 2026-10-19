@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { colors } from '@/constants/app-theme';
+import { useSession } from '@/contexts/session-provider';
 
 // Icons come from Ionicons rather than IconSymbol because every screen in this
 // app already draws its icons with Ionicons — mixing SF Symbols into the tab
@@ -27,6 +28,12 @@ function tabIcon(name: keyof typeof ICONS) {
 }
 
 export default function TabLayout() {
+  // Technicians (role USER) work from their tasks: uploading documents and the
+  // standalone Forms list are for managers and admins. href: null removes the
+  // tab from the bar; it does not protect the route — the backend still has to.
+  const { role } = useSession();
+  const managerOnly = role === 'USER' ? null : undefined;
+
   return (
     <Tabs
       screenOptions={{
@@ -57,9 +64,10 @@ export default function TabLayout() {
         name="document"
         options={{ title: 'Documents', tabBarIcon: tabIcon('document') }}
       />
+    
       <Tabs.Screen
         name="upload"
-        options={{ title: 'Upload', tabBarIcon: tabIcon('upload') }}
+        options={{ title: 'Upload', tabBarIcon: tabIcon('upload'), href: managerOnly }}
       />
       <Tabs.Screen
         name="ask"
@@ -67,7 +75,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="forms"
-        options={{ title: 'Forms', tabBarIcon: tabIcon('forms') }}
+        options={{ title: 'Forms', tabBarIcon: tabIcon('forms'), href: managerOnly }}
       />
       <Tabs.Screen
         name="tasks"

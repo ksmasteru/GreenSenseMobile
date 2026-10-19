@@ -1,34 +1,11 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Redirect } from 'expo-router';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
-import Upload from './upload.jsx';
+import { useSession } from '@/contexts/session-provider';
 
+// The tab group's default route, where the app lands after login. It has no tab
+// of its own (href: null in _layout.tsx), so it only sends each user to their
+// starting tab: technicians to their tasks, since Upload is hidden for them.
 export default function HomeScreen() {
-  return (
-    <Upload></Upload>
-  )
+  const { role } = useSession();
+  return <Redirect href={role === 'USER' ? '/tasks' : '/upload'} />;
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});

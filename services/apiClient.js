@@ -312,7 +312,9 @@ export async function refreshAccessToken()
     if (data.refreshToken)
       await saveRefreshToken(data.refreshToken);
 
-    return data.accessToken;
+    // AuthResponse also carries the user's role (capital R: the Java record
+    // field name), which decides the tabs they see
+    return { accessToken: data.accessToken, role: data.Role };
   } catch (error) {
     console.log('refreshAccessToken failed', error);
     return null;
