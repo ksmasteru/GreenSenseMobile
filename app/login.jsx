@@ -38,7 +38,7 @@ import { colors, gradients } from '@/constants/app-theme';
       signIn(gotted);  
     }
     else
-      Alert.alert("couldnt login");// we should show the correct message .
+      Alert.alert("Connexion impossible. Vérifiez vos identifiants.");// we should show the correct message .
     setLoading(false);
   }
   return (
@@ -74,8 +74,8 @@ import { colors, gradients } from '@/constants/app-theme';
                   <Ionicons name="person" size={44} color={colors.text} />
                 </LinearGradient>
               </View>
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Sign in to keep going</Text>
+              <Text style={styles.title}>Bon retour</Text>
+              <Text style={styles.subtitle}>Connectez-vous pour continuer</Text>
             </Animated.View>
 
             <Animated.View
@@ -87,7 +87,7 @@ import { colors, gradients } from '@/constants/app-theme';
                   <Ionicons name="mail-outline" size={20} color={colors.textDim} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Email"
+                    placeholder="E-mail"
                     placeholderTextColor={colors.placeholder}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -103,7 +103,7 @@ import { colors, gradients } from '@/constants/app-theme';
                   <Ionicons name="lock-closed-outline" size={20} color={colors.textDim} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Password"
+                    placeholder="Mot de passe"
                     placeholderTextColor={colors.placeholder}
                     autoCapitalize="none"
                     secureTextEntry={!showPassword}
@@ -120,7 +120,7 @@ import { colors, gradients } from '@/constants/app-theme';
                 </View>
 
                 <Pressable hitSlop={8} style={styles.forgotWrap}>
-                  <Text style={styles.forgotText}>Forgot password?</Text>
+                  <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
                 </Pressable>
 
                 <Pressable
@@ -140,14 +140,14 @@ import { colors, gradients } from '@/constants/app-theme';
                     {loading ? (
                       <ActivityIndicator color={colors.text} />
                     ) : (
-                      <Text style={styles.buttonText}>Log In</Text>
+                      <Text style={styles.buttonText}>Se connecter</Text>
                     )}
                   </LinearGradient>
                 </Pressable>
               </BlurView>
 
               <Text style={styles.footerText}>
-                Don&apos;t have an account? <Text style={styles.footerLink}>Sign up</Text>
+                Pas encore de compte ? <Text style={styles.footerLink}>S&apos;inscrire</Text>
               </Text>
             </Animated.View>
             </ScrollView>

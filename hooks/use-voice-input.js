@@ -36,8 +36,8 @@ const SPEECH_QUALITY = {
 // round-trip to be handed an empty string back.
 const MIN_DURATION_MS = 700;
 
-// Errors are shown under the mic, so they follow the screen's language: the
-// Ask tab is English, the checklist sheet is French.
+// Errors are shown under the mic, in the screen's language. The app is in
+// French, so French is the default when no language is passed.
 const MESSAGES = {
   en: {
     denied: 'Microphone permission denied.',
@@ -70,7 +70,7 @@ const MESSAGES = {
  * }}
  */
 export function useVoiceInput({ language } = {}) {
-  const t = MESSAGES[language] ?? MESSAGES.en;
+  const t = MESSAGES[language] ?? MESSAGES.fr;
   const recorder = useAudioRecorder(SPEECH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
 
@@ -150,13 +150,56 @@ export function useVoiceInput({ language } = {}) {
     }
     return text;
   }, [recorder, status, language, t]);
+  
+  // specefic to reports.
+  const stopReport = useCallback(async (context) => {
+  if (status !== 'recording') return null;
 
+    const heldFor = Date.now() - startedAt.current;
+    try {
+      await recorder.stop();
+    } catch (e) {
+      console.error('useVoiceInput.stop failed', e);
+      setStatus('idle');
+      setError(t.recordFailed);
+      return null;
+    } finally {
+      // Hand the mic back, or other audio stays stuck in record mode.
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+    }
+
+    const uri = recorder.uri;
+    if (!uri || heldFor < MIN_DURATION_MS) {
+      setStatus('idle');
+      return null;
+    }
+    console.log("recorded audio uri is. : ", uri);
+    setStatus('transcribing');
+    const result = await apiClient.transcribeAudioReport(uri, language, context);
+    setStatus('idle');
+    // null means the upload itself failed, which is worth telling apart from
+    // "the audio had no words in it".
+    if (!result) {
+      setError(t.uploadFailed);
+      return null;
+    }
+    // Citations are dropped on purpose: the transcript becomes the question in
+    // the text box, and /ask/transcribe never retrieves documents anyway.
+    const text = apiClient.parseAiResponse(result).text.trim();
+    if (!text) {
+      setError(t.noSpeech);
+      return null;
+    }
+    return text;
+  }, [recorder, status, language, t]);
+  
   return {
     status,
     error,
     durationMillis: recorderState.durationMillis ?? 0,
     start,
     stop,
+    stopReport,
     clearError: useCallback(() => setError(null), []),
   };
 }

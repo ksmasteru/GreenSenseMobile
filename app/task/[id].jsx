@@ -67,10 +67,12 @@ const MOCK_QUESTIONS = [
 ];
 
 const TABS = [
-  { key: 'details', label: 'Details', icon: ['document-text', 'document-text-outline'] },
-  { key: 'ask', label: 'Ask', icon: ['chatbubbles', 'chatbubbles-outline'] },
-  { key: 'report', label: 'Report', icon: ['clipboard', 'clipboard-outline'] },
+  { key: 'details', label: 'Détails', icon: ['document-text', 'document-text-outline'] },
+  { key: 'ask', label: 'Assistant', icon: ['chatbubbles', 'chatbubbles-outline'] },
+  { key: 'report', label: 'Rapport', icon: ['clipboard', 'clipboard-outline'] },
 ];
+
+const PRIORITY_LABEL = { URGENT: 'Urgente', HIGH: 'Haute', NORMAL: 'Normale', LOW: 'Basse' };
 
 const PRIORITY_STYLE = {
   URGENT: { color: colors.danger, borderColor: colors.dangerBorder, backgroundColor: colors.dangerFill },
@@ -151,7 +153,7 @@ function TaskHeader({ task, onBack }) {
         style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       >
         <Ionicons name="chevron-back" size={22} color={colors.text} />
-        <Text style={styles.backText}>Tasks</Text>
+        <Text style={styles.backText}>Tâches</Text>
       </Pressable>
 
       <Text style={styles.headerTitle} numberOfLines={2}>
@@ -165,7 +167,7 @@ function TaskHeader({ task, onBack }) {
         </View>
         <View style={[styles.metaChip, styles.statusChip]}>
           <View style={styles.liveDot} />
-          <Text style={[styles.metaChipText, { color: colors.success }]}>In progress</Text>
+          <Text style={[styles.metaChipText, { color: colors.success }]}>En cours</Text>
         </View>
         <View style={styles.metaChip}>
           <Ionicons name="time-outline" size={13} color={colors.textDim} />
@@ -182,16 +184,16 @@ function DetailsTab({ task }) {
   return (
     <ScrollView contentContainerStyle={styles.tabContent}>
       <View style={styles.factGrid}>
-        <Fact icon="flag-outline" label="Priority">
-          <Text style={[styles.priority, priority]}>{task.priority}</Text>
+        <Fact icon="flag-outline" label="Priorité">
+          <Text style={[styles.priority, priority]}>{PRIORITY_LABEL[task.priority] ?? task.priority}</Text>
         </Fact>
-        <Fact icon="calendar-outline" label="Due" value={task.dueDate} />
-        <Fact icon="location-outline" label="Location" value={task.location} />
-        <Fact icon="checkmark-done-outline" label="Accepted" value={task.acceptedAt} />
+        <Fact icon="calendar-outline" label="Échéance" value={task.dueDate} />
+        <Fact icon="location-outline" label="Emplacement" value={task.location} />
+        <Fact icon="checkmark-done-outline" label="Acceptée" value={task.acceptedAt} />
       </View>
 
       <BlurView intensity={45} tint="dark" style={styles.card}>
-        <Text style={styles.sectionLabel}>Instructions</Text>
+        <Text style={styles.sectionLabel}>Consignes</Text>
         <Text style={styles.bodyText}>{task.instructions}</Text>
       </BlurView>
 
@@ -200,9 +202,9 @@ function DetailsTab({ task }) {
           <Ionicons name="clipboard-outline" size={20} color={colors.accent} />
         </View>
         <View style={styles.flex}>
-          <Text style={styles.sectionLabel}>Report to fill</Text>
+          <Text style={styles.sectionLabel}>Rapport à remplir</Text>
           <Text style={styles.rowTitle}>{task.template.title}</Text>
-          <Text style={styles.hint}>Chosen by your manager when the task was created</Text>
+          <Text style={styles.hint}>Choisi par votre manager à la création de la tâche</Text>
         </View>
       </BlurView>
     </ScrollView>
@@ -232,7 +234,7 @@ function AskTab() {
       <ScrollView contentContainerStyle={styles.chatContent}>
         <View style={styles.contextPill}>
           <Ionicons name="link-outline" size={14} color={colors.accent} />
-          <Text style={styles.contextText}>Questions here are attached to this task</Text>
+          <Text style={styles.contextText}>Les questions posées ici sont rattachées à cette tâche</Text>
         </View>
 
         {MOCK_MESSAGES.map((m, i) =>
@@ -267,7 +269,7 @@ function AskTab() {
           </Pressable>
           <TextInput
             style={styles.composerInput}
-            placeholder="Ask about this job…"
+            placeholder="Une question sur cette intervention…"
             placeholderTextColor={colors.placeholder}
             multiline
           />
@@ -298,7 +300,7 @@ function ReportTab({ task, answers, answered, onAnswer }) {
 
       {/* filled in from the task, so the technician can't get them wrong */}
       <View style={styles.prefillRow}>
-        <Prefilled icon="construct-outline" label="Equipment" value={task.equipmentId} />
+        <Prefilled icon="construct-outline" label="Équipement" value={task.equipmentId} />
         <Prefilled icon="calendar-outline" label="Date" value="18/10/2026" />
       </View>
 
@@ -319,11 +321,11 @@ function ReportTab({ task, answers, answered, onAnswer }) {
       ))}
 
       <BlurView intensity={45} tint="dark" style={styles.card}>
-        <Text style={styles.sectionLabel}>General comment</Text>
+        <Text style={styles.sectionLabel}>Commentaire général</Text>
         <View style={styles.commentRow}>
           <TextInput
             style={[styles.input, styles.flex]}
-            placeholder="What did you do, what's left?"
+            placeholder="Qu'avez-vous fait, que reste-t-il ?"
             placeholderTextColor={colors.placeholder}
             multiline
           />
@@ -360,7 +362,7 @@ function QuestionRow({ index, question, value, onAnswer }) {
       <View style={styles.questionTop}>
         <Text style={styles.questionIndex}>{index}</Text>
         <Text style={styles.questionLabel}>{question.label}</Text>
-        {question.critical && <Text style={styles.criticalTag}>Critical</Text>}
+        {question.critical && <Text style={styles.criticalTag}>Critique</Text>}
       </View>
 
       <View style={styles.answerRow}>
@@ -383,7 +385,7 @@ function QuestionRow({ index, question, value, onAnswer }) {
       {isBad && (
         <TextInput
           style={[styles.input, styles.badComment]}
-          placeholder={question.critical ? 'Comment required for a critical item' : 'Comment (optional)'}
+          placeholder={question.critical ? 'Commentaire obligatoire pour un point critique' : 'Commentaire (facultatif)'}
           placeholderTextColor={colors.placeholder}
           multiline
         />
@@ -426,13 +428,13 @@ function ActionBar({ tab, reportReady, onOpenReport }) {
     <View style={styles.actionBar}>
       {tab === 'details' ? (
         <>
-          <BarButton label="Block" icon="hand-left-outline" variant="warning" />
-          <BarButton label="Open report" icon="arrow-forward" variant="primary" iconRight onPress={onOpenReport} />
+          <BarButton label="Bloquer" icon="hand-left-outline" variant="warning" />
+          <BarButton label="Ouvrir le rapport" icon="arrow-forward" variant="primary" iconRight onPress={onOpenReport} />
         </>
       ) : (
         <>
-          <BarButton label="Save draft" icon="save-outline" variant="ghost" />
-          <BarButton label="Submit" icon="send" variant="primary" iconRight disabled={!reportReady} />
+          <BarButton label="Brouillon" icon="save-outline" variant="ghost" />
+          <BarButton label="Envoyer" icon="send" variant="primary" iconRight disabled={!reportReady} />
         </>
       )}
     </View>

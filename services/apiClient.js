@@ -15,8 +15,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { File, Paths } from 'expo-file-system';
 import { fetch as expoFetch } from 'expo/fetch';
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://172.20.10.6:8080";
-const REFRESH_API = "http://172.20.10.6:8080/api/auth/refresh"
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const REFRESH_API = `${API_URL}/api/auth/refresh`;
 if (__DEV__ && !API_URL) {
   console.warn(
     "[apiClient] EXPO_PUBLIC_API_URL is not set — requests will be sent to a relative path and likely fail. Add it to a .env file at the project root (see .env.example)."
@@ -97,7 +97,7 @@ export function parseAiResponse(raw) {
     console.log("ai answer using rag ", text);
     if (text.trim() === 'null')
     {
-      return {text : "I couldn't find an answer to this in your documents."}
+      return {text : "Je n'ai pas trouvé de réponse à cette question dans vos documents."}
     }
   // A backend build from before citations existed omits the field, and string
   // concatenation would then print a literal "undefined" under the answer.
@@ -230,6 +230,44 @@ export async function transcribeAudio(uri, language, context) {
     return null;
   }
 }
+
+// specefic to report page ; forms filling.
+export async function transcribeAudioReport(uri, language, context) {
+  if (!uri) return null;
+
+  const formData = new FormData();
+  // RN's FormData wants a {uri, name, type} descriptor for files, same as
+  // uploadFile(). The recorder writes .m4a, which is an MPEG-4 container —
+  // hence audio/mp4, the type servers actually match on.
+  formData.append('audio', {
+    uri,
+    name: 'question.m4a',
+    type: 'audio/mp4',
+  });
+  if (language) formData.append('language', language);
+  if (context) formData.append('context', context);
+
+  try {
+    const response = await fetch(API_URL + '/api/v1/ask/transcribeReport', {
+      method: 'POST',
+      // No Content-Type on purpose: multipart needs a boundary only the
+      // runtime can generate, and setting the header by hand strips it.
+      // uploadFile() does the same; askImageQuestion() above does not, and
+      // is worth revisiting.
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+      body: formData,
+    });
+    if (!response.ok) {
+      console.error('error while transcribing audio', response.status);
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('transcribeAudio failed', error);
+    return null;
+  }
+}
+
 
 
 export async function login(email, password)

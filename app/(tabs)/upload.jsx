@@ -43,10 +43,10 @@ const ACCEPTED_TYPES = [
 ];
 
 const STATUS_ICON = {
-    idle: { name: 'ellipse-outline', color: colors.glassBorderStrong, label: 'No photo attached' },
-    uploading: { name: 'cloud-upload-outline', color: colors.accent, label: 'Uploading photo' },
-    success: { name: 'checkmark-circle', color: colors.success, label: 'Photo uploaded' },
-    error: { name: 'alert-circle', color: colors.danger, label: 'Upload failed' },
+    idle: { name: 'ellipse-outline', color: colors.glassBorderStrong, label: 'Aucune photo jointe' },
+    uploading: { name: 'cloud-upload-outline', color: colors.accent, label: 'Envoi de la photo' },
+    success: { name: 'checkmark-circle', color: colors.success, label: 'Photo envoyée' },
+    error: { name: 'alert-circle', color: colors.danger, label: "Échec de l'envoi" },
 };
 
 const Upload = () => {
@@ -74,7 +74,7 @@ const Upload = () => {
         setUploadedScannedName(response.Files[0].name);
     }
     else{
-      Alert.alert("file wasnt uploaded");
+      Alert.alert("Le fichier n'a pas pu être envoyé.");
       setUploadedScannedName(null);
     }
   }
@@ -92,8 +92,8 @@ const Upload = () => {
       const { text } = await TextRecognition.recognize(scannedUri);
       if (!text || text.trim().length === 0) {
           Alert.alert(
-            "No text found in the scanned document. " +
-            "Make sure the document is well-lit and the text is clear."
+            "Aucun texte détecté dans le document scanné. " +
+            "Vérifiez que le document est bien éclairé et le texte lisible."
           );
       }
       else{
@@ -104,7 +104,7 @@ const Upload = () => {
       }
     }
     catch (err) {
-      Alert.alert('Scan failed', err.message);
+      Alert.alert('Échec du scan', err.message);
     }
   }
 
@@ -130,7 +130,7 @@ const Upload = () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (permission.granted === false)
     {
-      Alert.alert('camera permission denied');
+      Alert.alert('Accès à la caméra refusé.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -185,12 +185,12 @@ const Upload = () => {
       setStatus('error');
       if (err.response?.status === 403) {
         setErrorMessage(
-          "Forbidden — your session may lack permission for this action, or the token wasn't accepted."
+          "Accès refusé : votre compte n'a pas l'autorisation pour cette action, ou votre session a expiré."
         );
       } else if (err.response?.status === 413) {
-        setErrorMessage('That file is too large.');
+        setErrorMessage('Ce fichier est trop volumineux.');
       } else {
-        setErrorMessage('Upload failed. Check the file and try again.');
+        setErrorMessage("L'envoi a échoué. Vérifiez le fichier et réessayez.");
       }
     }
   }
@@ -225,9 +225,9 @@ const Upload = () => {
                     <Ionicons name="cloud-upload-outline" size={40} color={colors.text} />
                   </LinearGradient>
                 </View>
-                <Text style={styles.title}>Upload a Document</Text>
+                <Text style={styles.title}>Importer un document</Text>
                 <Text style={styles.subtitle}>
-                  PDFs and text documents are indexed for search after upload.
+                  Les PDF et documents texte sont indexés pour la recherche après l&apos;import.
                 </Text>
               </Animated.View>
 
@@ -251,9 +251,9 @@ const Upload = () => {
                       </Text>
                     ) : (
                       <>
-                        <Text style={styles.dropzoneText}>Tap to choose a file</Text>
+                        <Text style={styles.dropzoneText}>Touchez pour choisir un fichier</Text>
                         <Text style={styles.dropzoneHint}>
-                          PDF, TXT, CSV, EXCEL or MD — up to 25MB
+                          PDF, TXT, CSV, EXCEL ou MD — jusqu&apos;à 25 Mo
                         </Text>
                       </>
                     )}
@@ -272,7 +272,7 @@ const Upload = () => {
                       ):
                       (
                         <>
-                        <Text style={styles.dropzoneText}>Tap to choose an image</Text>
+                        <Text style={styles.dropzoneText}>Touchez pour choisir une image</Text>
                         </>
                       )
                       }
@@ -282,11 +282,11 @@ const Upload = () => {
                     style={({ pressed }) => [styles.dropzone, pressed && styles.dropzonePressed]}
                   >
                     <Ionicons name="scan-outline" size={26} color={colors.textStrong} />
-                    <Text style={styles.dropzoneText}>Scan a document</Text>
+                    <Text style={styles.dropzoneText}>Scanner un document</Text>
                     <Text style={styles.dropzoneHint}>
                       {hasNativeScanner
-                        ? 'Auto edge detection and cropping'
-                        : 'Expo Go: camera + manual crop'}
+                        ? 'Détection des bords et recadrage automatiques'
+                        : 'Expo Go : caméra + recadrage manuel'}
                     </Text>
                   </Pressable>
 
@@ -295,7 +295,7 @@ const Upload = () => {
                       onPress={uploadScannedText}
                       style={({ pressed }) => [styles.dropzone, pressed && styles.dropzonePressed]}
                     >
-                    <Text style={styles.dropzoneText}>upload scan</Text>
+                    <Text style={styles.dropzoneText}>Envoyer le scan</Text>
                     </Pressable>
                   )}
                   {
@@ -330,7 +330,7 @@ const Upload = () => {
                   {status === 'success' && (
                     <View style={styles.successBanner}>
                       <Text style={styles.successText}>
-                        Uploaded. It&apos;ll show up in search shortly.
+                        Document importé. Il apparaîtra bientôt dans la recherche.
                       </Text>
                     </View>
                   )}
@@ -362,7 +362,7 @@ const Upload = () => {
                       {status === 'uploading' ? (
                         <ActivityIndicator color={colors.text} />
                       ) : (
-                        <Text style={styles.buttonText}>Upload document</Text>
+                        <Text style={styles.buttonText}>Importer le document</Text>
                       )}
                     </LinearGradient>
                   </Pressable>

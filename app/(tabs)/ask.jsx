@@ -29,10 +29,10 @@ const MAX_INPUT_HEIGHT = 120;
 // isn't rebuilt on every render, and so an unknown status is a missing key
 // (renders nothing) rather than four silently-false comparisons.
 const STATUS_ICON = {
-    idle: { name: 'ellipse-outline', color: colors.glassBorderStrong, label: 'No photo attached' },
-    uploading: { name: 'cloud-upload-outline', color: colors.accent, label: 'Uploading photo' },
-    success: { name: 'checkmark-circle', color: colors.success, label: 'Photo uploaded' },
-    error: { name: 'alert-circle', color: colors.danger, label: 'Upload failed' },
+    idle: { name: 'ellipse-outline', color: colors.glassBorderStrong, label: 'Aucune photo jointe' },
+    uploading: { name: 'cloud-upload-outline', color: colors.accent, label: 'Envoi de la photo' },
+    success: { name: 'checkmark-circle', color: colors.success, label: 'Photo envoyée' },
+    error: { name: 'alert-circle', color: colors.danger, label: "Échec de l'envoi" },
 };
 
 // General "ask about your data" tab — no fileId/fileName scoping, no
@@ -72,7 +72,7 @@ const ask = () => {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (permission.granted === false)
         {
-            Alert.alert('camera permission denied');
+            Alert.alert('Accès à la caméra refusé.');
             setStatus("error");
             return;
         }
@@ -104,7 +104,7 @@ const ask = () => {
         else
             response = await apiClient.askQuestion(trimmed);
         if (!response) {
-            setErrorMessage('Something went wrong while getting an answer. Try again.');
+            setErrorMessage("Impossible d'obtenir une réponse. Réessayez.");
             setMessages((prev) => prev.slice(0, -1)); // drop the empty assistant placeholder
         } else {
             const { text} = apiClient.parseAiResponse(response);
@@ -144,9 +144,9 @@ const ask = () => {
                         <LinearGradient colors={gradients.accent} style={styles.icon}>
                             <Ionicons name="sparkles" size={36} color={colors.text} />
                         </LinearGradient>
-                        <Text style={styles.title}>What do you want to know?</Text>
+                        <Text style={styles.title}>Que voulez-vous savoir ?</Text>
                         <Text style={styles.subtitle}>
-                            Ask a question and get an answer grounded in your uploaded documents.
+                            Posez vos questions sur les pompes, la maintenance ou PHOVA : les réponses s&apos;appuient sur la documentation.
                         </Text>
                     </Animated.View>
                     <Animated.View entering={FadeInUp.duration(700).delay(150).springify()} style={styles.composerWrap}>
@@ -248,7 +248,7 @@ function Composer({ recording, startRecording, stopRecording, image, uploadImage
                 size={16}
                 color={recording ? colors.danger : colors.textStrong}
             />
-            <Text style={styles.uploadChipText}>{recording ? 'Stop' : 'Record'}</Text>
+            <Text style={styles.uploadChipText}>{recording ? 'Arrêter' : 'Dicter'}</Text>
         </Pressable>
         <Pressable
             onPress={uploadImage}
@@ -256,7 +256,7 @@ function Composer({ recording, startRecording, stopRecording, image, uploadImage
             style={({ pressed }) => [styles.uploadChip, pressed && styles.buttonPressed]}
         >
             <Ionicons name="image-outline" size={16} color={colors.textStrong} />
-            <Text style={styles.uploadChipText}>Upload a photo</Text>
+            <Text style={styles.uploadChipText}>Ajouter une photo</Text>
         </Pressable>
         <View style={styles.statusSlot}>
             {STATUS_ICON[Status] && (
@@ -273,7 +273,7 @@ function Composer({ recording, startRecording, stopRecording, image, uploadImage
             <View style={styles.inputRow}>
                 <TextInput
                     style={[styles.input, { height: inputHeight }]}
-                    placeholder="Ask a question about your documents…"
+                    placeholder="Posez votre question…"
                     placeholderTextColor={colors.placeholder}
                     value={question}
                     onChangeText={setQuestion}

@@ -42,9 +42,9 @@ const PRIORITY_STYLE = {
 
 // StatusReason values meant for decline
 const DECLINE_REASONS = [
-  { value: 'ON_LEAVE', label: 'On leave' },
-  { value: 'WRONG_TASK', label: 'Wrong task' },
-  { value: 'NO_ISSUE_FOUND', label: 'No issue found' },
+  { value: 'ON_LEAVE', label: 'En congé' },
+  { value: 'WRONG_TASK', label: 'Mauvaise tâche' },
+  { value: 'NO_ISSUE_FOUND', label: 'Pas de panne constatée' },
 ];
 
 // by priority, then earliest due date (tasks without a due date last)
@@ -56,7 +56,16 @@ const byPriority = (a, b) => {
   return a.dueDate.localeCompare(b.dueDate);
 };
 
-// "IN_PROGRESS" -> "In progress"
+const PRIORITY_LABEL = { URGENT: 'Urgente', HIGH: 'Haute', NORMAL: 'Normale', LOW: 'Basse' };
+
+const STATUS_LABEL = {
+  ASSIGNED: 'Assignée',
+  STARTED: 'En cours',
+  BLOCKED: 'Bloquée',
+  RETURNED: 'À corriger',
+};
+
+// fallback for a status missing above: "IN_PROGRESS" -> "In progress"
 const humanize = (value) =>
   value ? value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ') : '—';
 
@@ -152,9 +161,9 @@ const Tasks = () => {
                     <Ionicons name="checkbox" size={40} color={colors.text} />
                   </LinearGradient>
                 </View>
-                <Text style={styles.title}>My tasks</Text>
+                <Text style={styles.title}>Mes tâches</Text>
                 <Text style={styles.subtitle}>
-                  Open a task to read its instructions, then accept or decline it.
+                  Ouvrez une tâche pour lire ses consignes, puis acceptez-la ou refusez-la.
                 </Text>
               </Animated.View>
 
@@ -162,21 +171,21 @@ const Tasks = () => {
                 {loading && (
                   <View style={styles.centered}>
                     <ActivityIndicator color={colors.accent} />
-                    <Text style={styles.hint}>Loading tasks…</Text>
+                    <Text style={styles.hint}>Chargement des tâches…</Text>
                   </View>
                 )}
 
                 {!loading && loadError && (
                   <View style={styles.errorBanner}>
                     <Text style={styles.errorText}>
-                      Your tasks could not be loaded. Check your connection and try again.
+                      Vos tâches n&apos;ont pas pu être chargées. Vérifiez votre connexion et réessayez.
                     </Text>
                     <Pressable
                       onPress={onRetry}
                       style={({ pressed }) => [styles.retry, pressed && styles.pressed]}
                     >
                       <Ionicons name="refresh" size={16} color={colors.text} />
-                      <Text style={styles.retryText}>Retry</Text>
+                      <Text style={styles.retryText}>Réessayer</Text>
                     </Pressable>
                   </View>
                 )}
@@ -184,7 +193,7 @@ const Tasks = () => {
                 {!loading && !loadError && tasks.length === 0 && <EmptyState />}
 
                 {!loading && tasks.length > 0 && (
-                  <Text style={styles.groupHeading}>Assigned to you · {tasks.length}</Text>
+                  <Text style={styles.groupHeading}>Assignées · {tasks.length}</Text>
                 )}
 
                 {!loading &&
@@ -235,7 +244,7 @@ const TaskCard = ({ task, isOpen, opensScreen, onPress, onAccepted, onDeclined }
                 { color: priority.color, borderColor: priority.borderColor, backgroundColor: priority.backgroundColor },
               ]}
             >
-              {task.priority}
+              {PRIORITY_LABEL[task.priority] ?? task.priority}
             </Text>
           </View>
 
@@ -245,7 +254,7 @@ const TaskCard = ({ task, isOpen, opensScreen, onPress, onAccepted, onDeclined }
             <Meta icon="calendar-outline" text={task.dueDate ?? '—'} />
             <Meta
               icon={task.status === 'STARTED' ? 'play-circle-outline' : 'ellipse-outline'}
-              text={humanize(task.status)}
+              text={STATUS_LABEL[task.status] ?? humanize(task.status)}
               color={task.status === 'STARTED' ? colors.success : undefined}
             />
           </View>
@@ -260,8 +269,8 @@ const TaskCard = ({ task, isOpen, opensScreen, onPress, onAccepted, onDeclined }
 
         {isOpen && (
           <View style={styles.details}>
-            <Text style={styles.sectionLabel}>Instructions</Text>
-            <Text style={styles.instructions}>{task.instructions || 'No instructions.'}</Text>
+            <Text style={styles.sectionLabel}>Consignes</Text>
+            <Text style={styles.instructions}>{task.instructions || 'Aucune consigne.'}</Text>
 
             {task.status === 'ASSIGNED' && (
               <AssignedActions task={task} onAccepted={onAccepted} onDeclined={onDeclined} />
@@ -295,7 +304,7 @@ const AssignedActions = ({ task, onAccepted, onDeclined }) => {
     const ok = await apiClient.startTask(task.id);
     setSending(false);
     if (!ok) {
-      setError("Couldn't accept the task. Try again.");
+      setError("Impossible d'accepter la tâche. Réessayez.");
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -307,7 +316,7 @@ const AssignedActions = ({ task, onAccepted, onDeclined }) => {
     setError('');
     const ok = await apiClient.declineTask(task.id, reason, comment.trim() || null);
     if (!ok) {
-      setError("Couldn't decline the task. Try again.");
+      setError("Impossible de refuser la tâche. Réessayez.");
       setSending(false);
       return;
     }
@@ -319,14 +328,14 @@ const AssignedActions = ({ task, onAccepted, onDeclined }) => {
     <View style={styles.actions}>
       {!declining && (
         <View style={styles.buttonRow}>
-          <ActionButton label="Decline" icon="close" variant="ghost" disabled={sending} onPress={() => setDeclining(true)} />
-          <ActionButton label="Accept" icon="checkmark" variant="success" busy={sending} disabled={sending} onPress={accept} />
+          <ActionButton label="Refuser" icon="close" variant="ghost" disabled={sending} onPress={() => setDeclining(true)} />
+          <ActionButton label="Accepter" icon="checkmark" variant="success" busy={sending} disabled={sending} onPress={accept} />
         </View>
       )}
 
       {declining && (
         <View style={styles.declineForm}>
-          <Text style={styles.sectionLabel}>Reason</Text>
+          <Text style={styles.sectionLabel}>Motif</Text>
           <View style={styles.chips}>
             {DECLINE_REASONS.map((r) => {
               const selected = reason === r.value;
@@ -348,20 +357,20 @@ const AssignedActions = ({ task, onAccepted, onDeclined }) => {
             })}
           </View>
 
-          <Text style={styles.sectionLabel}>Comment (optional)</Text>
+          <Text style={styles.sectionLabel}>Commentaire (facultatif)</Text>
           <TextInput
             value={comment}
             onChangeText={setComment}
             editable={!sending}
             multiline
-            placeholder="Anything the planner should know"
+            placeholder="Une information utile pour le planificateur"
             placeholderTextColor={colors.placeholder}
             style={styles.input}
           />
 
           <View style={styles.buttonRow}>
-            <ActionButton label="Cancel" variant="ghost" disabled={sending} onPress={() => setDeclining(false)} />
-            <ActionButton label="Confirm decline" icon="close-circle" variant="danger" busy={sending} disabled={sending} onPress={decline} />
+            <ActionButton label="Annuler" variant="ghost" disabled={sending} onPress={() => setDeclining(false)} />
+            <ActionButton label="Confirmer le refus" icon="close-circle" variant="danger" busy={sending} disabled={sending} onPress={decline} />
           </View>
         </View>
       )}
@@ -403,8 +412,8 @@ const ActionButton = ({ label, icon, variant, busy, disabled, onPress }) => {
 const EmptyState = () => (
   <View style={styles.empty}>
     <Text style={styles.emptyIcon}>✅</Text>
-    <Text style={styles.emptyTitle}>No tasks assigned to you</Text>
-    <Text style={styles.hint}>New assignments show up here. Pull down to reload.</Text>
+    <Text style={styles.emptyTitle}>Aucune tâche ne vous est assignée</Text>
+    <Text style={styles.hint}>Les nouvelles tâches apparaissent ici. Tirez vers le bas pour actualiser.</Text>
   </View>
 );
 

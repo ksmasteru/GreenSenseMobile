@@ -29,7 +29,7 @@ import { colors, gradients } from '@/constants/app-theme';
 const document = () => {
 
     const [loaded, setLoaded] = useState(false);
-    const [search, setSearch] = useState("lol");
+    const [search, setSearch] = useState("");
     const [status, setStatus] = useState("idle");
     const [documents, setDocuments] = useState(null);
 {
@@ -95,7 +95,7 @@ const document = () => {
             <Ionicons name="book" size={40} color={colors.text} />
             </LinearGradient>
             </View>
-            <Text style={styles.title}>Search Documents</Text>   
+            <Text style={styles.title}>Rechercher un document</Text>   
             </Animated.View>
             <Animated.View
                 entering={FadeInUp.duration(700).delay(150).springify()}
@@ -105,7 +105,7 @@ const document = () => {
                 <View style={styles.inputRow}>
                 <TextInput
                     style={styles.input}
-                    placeholder="Search"
+                    placeholder="Rechercher"
                     placeholderTextColor={colors.placeholder}
                     autoCapitalize="none"
                     keyboardType="email-address"
@@ -118,7 +118,7 @@ const document = () => {
             <Pressable
                 onPress={() => {searchDocuments(search)}}
                 style={({ pressed }) => [styles.buttonWrap, pressed && styles.buttonPressed]}>
-            <Text style={styles.buttonText}>search</Text>
+            <Text style={styles.buttonText}>Rechercher</Text>
             </Pressable>
             {loaded &&
             <Animated.View
@@ -140,11 +140,11 @@ const document = () => {
             }
             {documents && documents?.filesCount === 0 && (
                 <View>
-                    <Text>No matching files found!</Text>
+                    <Text>Aucun document trouvé.</Text>
                 </View>)}
             {status === "error" && (
                 <View>
-                    <Text>Error while fetching for documents</Text>
+                    <Text>La recherche a échoué. Vérifiez votre connexion.</Text>
                 </View>
              )
             }

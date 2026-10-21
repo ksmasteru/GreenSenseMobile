@@ -38,6 +38,19 @@ import * as apiClient from '@/services/apiClient';
 import { useVoiceInput } from '@/hooks/use-voice-input';
 import { colors, gradients, radius } from '@/constants/app-theme';
 
+// Put in front of every dictation context so the transcriber expects the faults a technician reports
+// on pumps, hoists and similar equipment. Written the way they speak — short everyday phrases, no
+// jargon — since Whisper copies the prompt's style. Whisper only reads the last 224 tokens of its
+// prompt and the backend keeps the last 1000 characters, so this stays around 130 tokens: the
+// item-specific part goes after it, closest to the audio, and is what survives when a long context
+// gets cut.
+const MAINTENANCE_VOCABULARY =
+  "Bruit anormal. Fuite d'huile. Fuite d'eau. Usure du câble, câble effiloché. Ça vibre beaucoup. " +
+  'Le moteur chauffe. Odeur de brûlé. Boulons desserrés. Pièce cassée, fissure. Rouille, corrosion. ' +
+  'Il y a du jeu. Ça frotte. Bloqué, grippé. Encrassé, bouché. Manque de graisse. Joint abîmé. ' +
+  "Pression faible. Ne démarre pas. S'arrête tout seul. Crochet déformé. Fil électrique abîmé. " +
+  'À remplacer.';
+
 // a dictated sentence goes after what's already typed, never over it
 const appendText = (current, text) => (current?.trim() ? `${current.trimEnd()} ${text}` : text);
 
@@ -131,7 +144,7 @@ export default function FillForm() {
     if (voice.status === 'transcribing') return;
     if (voice.status === 'recording') {
       const { deliver, context: about } = take.current;
-      const text = await voice.stop(about);
+      const text = await voice.stopReport(about);
       if (text) deliver?.(text);
       return;
     }
@@ -180,11 +193,12 @@ export default function FillForm() {
   // What each mic is about, sent with the audio so the transcriber expects the item's own
   // words (linguet, moufle, élingue…) instead of guessing. Written as the text that would
   // come just before the technician's sentence, which is how Whisper reads it.
-  const itemContext = (q, lead) => `${template.title}. Point ${q.position} : ${q.labelFr}. ${lead}`;
+  const itemContext = (q, lead) =>
+    `${MAINTENANCE_VOCABULARY} ${template.title}. Point ${q.position} : ${q.labelFr}. ${lead}`;
   // general remarks are most likely about what was found wrong
   const flagged = questions.filter((q) => answers[q.id]?.value === 'MAUVAIS');
   const listed = (flagged.length ? flagged : questions).map((q) => q.labelFr).join(' ; ');
-  const remarksContext = `${template.title}. ${
+  const remarksContext = `${MAINTENANCE_VOCABULARY} ${template.title}. ${
     flagged.length ? 'Points non conformes' : 'Points contrôlés'
   } : ${listed}. Remarques :`;
 

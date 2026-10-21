@@ -67,23 +67,23 @@ export default function TabLayout() {
     
       <Tabs.Screen
         name="upload"
-        options={{ title: 'Upload', tabBarIcon: tabIcon('upload'), href: managerOnly }}
+        options={{ title: 'Importer', tabBarIcon: tabIcon('upload'), href: managerOnly }}
       />
       <Tabs.Screen
         name="ask"
-        options={{ title: 'Ask', tabBarIcon: tabIcon('ask') }}
+        options={{ title: 'Assistant', tabBarIcon: tabIcon('ask') }}
       />
       <Tabs.Screen
         name="forms"
-        options={{ title: 'Forms', tabBarIcon: tabIcon('forms'), href: managerOnly }}
+        options={{ title: 'Formulaires', tabBarIcon: tabIcon('forms')}}
       />
       <Tabs.Screen
         name="tasks"
-        options={{ title: 'Tasks', tabBarIcon: tabIcon('tasks') }}
+        options={{ title: 'Tâches', tabBarIcon: tabIcon('tasks') }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profile', tabBarIcon: tabIcon('profile') }}
+        options={{ title: 'Profil', tabBarIcon: tabIcon('profile') }}
       />
       {/* Expo Router turns every file in this directory into a route, and any
           route without an explicit <Tabs.Screen> still gets its own tab. These

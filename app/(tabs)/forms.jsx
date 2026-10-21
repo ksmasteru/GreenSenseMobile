@@ -30,7 +30,7 @@ import { colors, gradients, radius } from '@/constants/app-theme';
 // how each checklist type is shown in the list (same groups as the web picker)
 const TYPE_INFO = {
   INSPECTION: { group: 'Inspections', badge: 'Inspection', icon: 'search', color: colors.accent },
-  PERMIT: { group: 'Work permits', badge: 'Permit', icon: 'flame', color: colors.warning },
+  PERMIT: { group: 'Permis de travail', badge: 'Permis', icon: 'flame', color: colors.warning },
 };
 
 const Forms = () => {
@@ -99,9 +99,9 @@ const Forms = () => {
                   <Ionicons name="clipboard" size={40} color={colors.text} />
                 </LinearGradient>
               </View>
-              <Text style={styles.title}>Forms</Text>
+              <Text style={styles.title}>Formulaires</Text>
               <Text style={styles.subtitle}>
-                Choose an inspection checklist or a work permit, fill it in, and send it.
+                Choisissez une checklist d&apos;inspection ou un permis de travail, remplissez-le et envoyez-le.
               </Text>
             </Animated.View>
 
@@ -109,21 +109,21 @@ const Forms = () => {
               {loading && (
                 <View style={styles.centered}>
                   <ActivityIndicator color={colors.accent} />
-                  <Text style={styles.hint}>Loading forms…</Text>
+                  <Text style={styles.hint}>Chargement des formulaires…</Text>
                 </View>
               )}
 
               {!loading && loadError && (
                 <View style={styles.errorBanner}>
                   <Text style={styles.errorText}>
-                    The list of forms could not be loaded. Check your connection and try again.
+                    La liste des formulaires n&apos;a pas pu être chargée. Vérifiez votre connexion et réessayez.
                   </Text>
                   <Pressable
                     onPress={onRetry}
                     style={({ pressed }) => [styles.retry, pressed && styles.pressed]}
                   >
                     <Ionicons name="refresh" size={16} color={colors.text} />
-                    <Text style={styles.retryText}>Retry</Text>
+                    <Text style={styles.retryText}>Réessayer</Text>
                   </Pressable>
                 </View>
               )}
@@ -172,8 +172,8 @@ const FormCard = ({ form, onPress }) => {
 const EmptyState = () => (
   <View style={styles.empty}>
     <Text style={styles.emptyIcon}>📋</Text>
-    <Text style={styles.emptyTitle}>No active form</Text>
-    <Text style={styles.hint}>Forms created on the web app show up here. Pull down to reload.</Text>
+    <Text style={styles.emptyTitle}>Aucun formulaire actif</Text>
+    <Text style={styles.hint}>Les formulaires créés sur l&apos;application web apparaissent ici. Tirez vers le bas pour actualiser.</Text>
   </View>
 );
 

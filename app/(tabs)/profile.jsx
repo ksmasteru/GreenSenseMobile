@@ -52,7 +52,7 @@ const Profile = () => {
                 <Ionicons name="person" size={40} color={colors.text} />
                 </LinearGradient>
                 </View>
-                <Text style={styles.title}>Your profile page</Text>
+                <Text style={styles.title}>Mon profil</Text>
                 </Animated.View>
                 <Animated.View
                     entering={FadeInUp.duration(700).delay(150).springify()}
@@ -61,7 +61,7 @@ const Profile = () => {
                 <BlurView intensity={45} tint="dark" style={styles.card}>
                     <Pressable
                         onPress={() => {signOut()}}>
-                        <Text style={styles.dropzoneText}>LogOut</Text>
+                        <Text style={styles.dropzoneText}>Se déconnecter</Text>
                     </Pressable>
                 </BlurView>
                 </Animated.View>
