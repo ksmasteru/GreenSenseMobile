@@ -26,6 +26,14 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import * as apiClient from '@/services/apiClient';
 import { colors, gradients, radius } from '@/constants/app-theme';
+import { EXPERTISE_FORM_TITLE, EXPERTISE_ONLY } from '@/constants/app-variant';
+import { useSession } from '@/contexts/session-provider';
+
+// the expertise build lists only its report; titles compared loosely so a stray
+// space or capital on the server doesn't hide it
+const sameTitle = (a, b) => a?.trim().toLowerCase() === b.trim().toLowerCase();
+const visibleForms = (forms) =>
+  EXPERTISE_ONLY ? forms.filter((f) => sameTitle(f.title, EXPERTISE_FORM_TITLE)) : forms;
 
 // how each checklist type is shown in the list (same groups as the web picker)
 const TYPE_INFO = {
@@ -35,6 +43,7 @@ const TYPE_INFO = {
 
 const Forms = () => {
   const router = useRouter();
+  const { signOut } = useSession();
   const [options, setOptions] = useState(null); // null = still loading
   const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,7 +51,7 @@ const Forms = () => {
   const loadOptions = useCallback(async () => {
     const data = await apiClient.getFormOptions();
     setLoadError(!data);
-    setOptions(data?.formsCount > 0 ? data.FormItem : []);
+    setOptions(data?.formsCount > 0 ? visibleForms(data.FormItem) : []);
   }, []);
 
   // the active forms only need loading once; pull down to reload
@@ -101,8 +110,20 @@ const Forms = () => {
               </View>
               <Text style={styles.title}>Formulaires</Text>
               <Text style={styles.subtitle}>
-                Choisissez une checklist d&apos;inspection ou un permis de travail, remplissez-le et envoyez-le.
+                {EXPERTISE_ONLY
+                  ? 'Ouvrez le rapport d’expertise, remplissez-le et envoyez-le.'
+                  : 'Choisissez une checklist d’inspection ou un permis de travail, remplissez-le et envoyez-le.'}
               </Text>
+              {/* the Profil tab, which holds the logout, is hidden in the expertise build */}
+              {EXPERTISE_ONLY && (
+                <Pressable
+                  onPress={signOut}
+                  style={({ pressed }) => [styles.retry, styles.logout, pressed && styles.pressed]}
+                >
+                  <Ionicons name="log-out-outline" size={16} color={colors.text} />
+                  <Text style={styles.retryText}>Se déconnecter</Text>
+                </Pressable>
+              )}
             </Animated.View>
 
             <Animated.View entering={FadeInUp.duration(700).delay(150).springify()}>
@@ -299,6 +320,10 @@ const styles = StyleSheet.create({
     borderColor: colors.glassBorderStrong,
     paddingHorizontal: 14,
     paddingVertical: 6,
+  },
+  logout: {
+    alignSelf: 'center',
+    marginTop: 14,
   },
   retryText: {
     fontSize: 13,

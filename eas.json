@@ -19,6 +19,17 @@
         "EXPO_PUBLIC_API_URL": "https://language-tribesman-backslid.ngrok-free.dev"
       }
     },
+    "expertise": {
+      "extends": "base",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://language-tribesman-backslid.ngrok-free.dev",
+        "EXPO_PUBLIC_APP_VARIANT": "expertise"
+      }
+    },
     "production": {
       "extends": "base",
       "autoIncrement": true

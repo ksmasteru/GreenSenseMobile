@@ -63,6 +63,10 @@ function RootNavigator() {
           <Stack.Screen name="form/[id]" options={{ headerShown: false }} />
           {/* pushed from the Tasks tab once a task is accepted; has its own tab bar */}
           <Stack.Screen name="task/[id]" options={{ headerShown: false }} />
+          {/* pushed from the Techniciens tab: a manager fills a task order for one technician */}
+          <Stack.Screen name="assign/[id]" options={{ headerShown: false }} />
+          {/* pushed from the Revue tab: a sent report, read-only, with the manager's decision */}
+          <Stack.Screen name="review/[id]" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>

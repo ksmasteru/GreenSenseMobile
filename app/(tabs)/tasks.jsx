@@ -115,6 +115,7 @@ const Tasks = () => {
         dueDate: task.dueDate ?? '',
         priority: task.priority ?? '',
         instructions: task.instructions ?? '',
+        templateId: task.templateId ?? '',
       },
     });
   };

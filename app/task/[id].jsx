@@ -1,15 +1,16 @@
-// Work screen for one accepted task — DESIGN MOCKUP, nothing here talks to the backend yet.
-// See TASK_FLOW_DESIGN.md: one screen per task with three tabs, pushed above (tabs) so the
-// app's own tab bar is hidden.
+// Work screen for one accepted task. See TASK_FLOW_DESIGN.md: one screen per task with three
+// tabs, pushed above (tabs) so the app's own tab bar is hidden.
 //
 //   header   ← task title, equipment, status, work timer
 //   Details  ← instructions and facts about the job, Block lives here
 //   Ask      ← the chat, scoped to this task
-//   Report   ← the checklist, pre-filled from the task; Submit lives here only
+//   Report   ← the checklist the manager picked (templateId), equipment taken from the task;
+//              Submit lives here only
 //
-// The title / equipment / location / due date / instructions come from the Tasks list as
-// route params; everything else is placeholder data (MOCK_*). Tabs switch and the checklist
-// toggles locally so the layout can be tried on a device, but no button sends anything.
+// The title / equipment / location / due date / instructions / templateId come from the Tasks
+// list as route params. The Report tab is the real sheet (components/checklist-sheet.jsx, the
+// same one the Forms tab opens); the rest is still placeholder data (MOCK_*) and its buttons
+// (Bloquer, the chat) send nothing yet.
 import { useState } from 'react';
 import {
   ImageBackground,
@@ -27,6 +28,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ChecklistSheet } from '@/components/checklist-sheet';
 import { colors, gradients, radius } from '@/constants/app-theme';
 
 // stands in for anything the list didn't pass
@@ -44,7 +46,6 @@ const MOCK_TASK = {
     '3. Remplacer la garniture si la fuite persiste.',
   acceptedAt: "Aujourd'hui, 09:14",
   timer: '0:42',
-  template: { title: 'Contrôle pompe centrifuge', type: 'Inspection', version: 3 },
 };
 
 const MOCK_MESSAGES = [
@@ -56,14 +57,6 @@ const MOCK_MESSAGES = [
       'Une légère fuite goutte à goutte est normale au démarrage.',
     sources: ['Manuel P-200 · p.42', 'Procédure MP-07'],
   },
-];
-
-const MOCK_QUESTIONS = [
-  { id: 1, label: 'Pompe consignée et cadenassée', critical: true },
-  { id: 2, label: 'Absence de fuite à la garniture', critical: true },
-  { id: 3, label: 'Niveau d’huile du palier correct', critical: false },
-  { id: 4, label: 'Absence de vibrations anormales', critical: false },
-  { id: 5, label: 'Zone de travail nettoyée', critical: false },
 ];
 
 const TABS = [
@@ -89,10 +82,11 @@ export default function TaskScreen() {
   const task = { ...MOCK_TASK, ...passed };
 
   const [tab, setTab] = useState('details');
-  const [answers, setAnswers] = useState({ 1: 'BON', 2: 'MAUVAIS' });
+  // what the sheet reports back: { template, answered, total, submitted }, null until it loads
+  const [report, setReport] = useState(null);
 
-  const answered = MOCK_QUESTIONS.filter((q) => answers[q.id]).length;
-  const reportReady = answered === MOCK_QUESTIONS.length;
+  const reportBadge =
+    report?.total && !report.submitted ? `${report.answered}/${report.total}` : null;
 
   const switchTab = (key) => {
     if (key === tab) return;
@@ -115,26 +109,35 @@ export default function TaskScreen() {
             {/* all three stay mounted so a chat or a half-filled report survives a tab switch */}
             <View style={styles.flex}>
               <View style={[styles.flex, tab !== 'details' && styles.hidden]}>
-                <DetailsTab task={task} />
+                <DetailsTab task={task} reportTitle={report?.template?.title} />
               </View>
               <View style={[styles.flex, tab !== 'ask' && styles.hidden]}>
                 <AskTab />
               </View>
               <View style={[styles.flex, tab !== 'report' && styles.hidden]}>
-                <ReportTab
-                  task={task}
-                  answers={answers}
-                  answered={answered}
-                  onAnswer={(id, value) => setAnswers((a) => ({ ...a, [id]: value }))}
-                />
+                <ScrollView contentContainerStyle={styles.reportContent} keyboardShouldPersistTaps="handled">
+                  {task.templateId ? (
+                    <ChecklistSheet
+                      templateId={task.templateId}
+                      taskId={task.id}
+                      fixedEquipment={task.equipmentId}
+                      closeLabel="Retour aux tâches"
+                      onClose={router.back}
+                      onStatus={setReport}
+                    />
+                  ) : (
+                    <NoReport />
+                  )}
+                </ScrollView>
               </View>
             </View>
 
-            <ActionBar tab={tab} reportReady={reportReady} onOpenReport={() => switchTab('report')} />
+            <ActionBar tab={tab} onOpenReport={() => switchTab('report')} />
             <TaskTabBar
               active={tab}
               onChange={switchTab}
-              reportBadge={reportReady ? null : `${answered}/${MOCK_QUESTIONS.length}`}
+              reportBadge={reportBadge}
+              reportDone={report?.submitted === true}
             />
           </KeyboardAvoidingView>
         </SafeAreaView>
@@ -179,7 +182,7 @@ function TaskHeader({ task, onBack }) {
 }
 
 // ─── Details tab ────────────────────────────────────────────────────────────
-function DetailsTab({ task }) {
+function DetailsTab({ task, reportTitle }) {
   const priority = PRIORITY_STYLE[task.priority] ?? PRIORITY_STYLE.LOW;
   return (
     <ScrollView contentContainerStyle={styles.tabContent}>
@@ -203,11 +206,31 @@ function DetailsTab({ task }) {
         </View>
         <View style={styles.flex}>
           <Text style={styles.sectionLabel}>Rapport à remplir</Text>
-          <Text style={styles.rowTitle}>{task.template.title}</Text>
-          <Text style={styles.hint}>Choisi par votre manager à la création de la tâche</Text>
+          {task.templateId ? (
+            <>
+              <Text style={styles.rowTitle}>{reportTitle ?? 'Chargement…'}</Text>
+              <Text style={styles.hint}>Choisi par votre manager à la création de la tâche</Text>
+            </>
+          ) : (
+            <Text style={styles.rowTitle}>Aucun rapport pour cette tâche</Text>
+          )}
         </View>
       </BlurView>
     </ScrollView>
+  );
+}
+
+// ─── Report tab without a checklist ─────────────────────────────────────────
+// tasks created before templateId existed, or by a manager who didn't pick one
+function NoReport() {
+  return (
+    <View style={styles.noReport}>
+      <Ionicons name="clipboard-outline" size={28} color={colors.textFaint} />
+      <Text style={styles.rowTitle}>Aucun rapport pour cette tâche</Text>
+      <Text style={[styles.hint, styles.centeredText]}>
+        Votre manager n&apos;a pas rattaché de checklist à cette tâche.
+      </Text>
+    </View>
   );
 }
 
@@ -285,164 +308,20 @@ function AskTab() {
   );
 }
 
-// ─── Report tab ─────────────────────────────────────────────────────────────
-function ReportTab({ task, answers, answered, onAnswer }) {
-  const total = MOCK_QUESTIONS.length;
-  return (
-    <ScrollView contentContainerStyle={styles.tabContent} keyboardShouldPersistTaps="handled">
-      <View>
-        <View style={styles.tags}>
-          <Text style={styles.typeTag}>{task.template.type}</Text>
-          <Text style={styles.version}>v{task.template.version}</Text>
-        </View>
-        <Text style={styles.reportTitle}>{task.template.title}</Text>
-      </View>
-
-      {/* filled in from the task, so the technician can't get them wrong */}
-      <View style={styles.prefillRow}>
-        <Prefilled icon="construct-outline" label="Équipement" value={task.equipmentId} />
-        <Prefilled icon="calendar-outline" label="Date" value="18/10/2026" />
-      </View>
-
-      <View>
-        <View style={styles.progressLabelRow}>
-          <Text style={styles.sectionLabel}>Checklist</Text>
-          <Text style={styles.progressCount}>
-            {answered}/{total}
-          </Text>
-        </View>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${(answered / total) * 100}%` }]} />
-        </View>
-      </View>
-
-      {MOCK_QUESTIONS.map((q, i) => (
-        <QuestionRow key={q.id} index={i + 1} question={q} value={answers[q.id]} onAnswer={onAnswer} />
-      ))}
-
-      <BlurView intensity={45} tint="dark" style={styles.card}>
-        <Text style={styles.sectionLabel}>Commentaire général</Text>
-        <View style={styles.commentRow}>
-          <TextInput
-            style={[styles.input, styles.flex]}
-            placeholder="Qu'avez-vous fait, que reste-t-il ?"
-            placeholderTextColor={colors.placeholder}
-            multiline
-          />
-          <Pressable hitSlop={8} style={({ pressed }) => [styles.micButton, pressed && styles.pressed]}>
-            <Ionicons name="mic-outline" size={18} color={colors.textStrong} />
-          </Pressable>
-        </View>
-      </BlurView>
-    </ScrollView>
-  );
-}
-
-function Prefilled({ icon, label, value }) {
-  return (
-    <View style={styles.prefilled}>
-      <Text style={styles.factLabel}>{label}</Text>
-      <View style={styles.prefilledValueRow}>
-        <Ionicons name={icon} size={14} color={colors.textDim} />
-        <Text style={styles.prefilledValue}>{value}</Text>
-        <Ionicons name="lock-closed" size={12} color={colors.textFaint} />
-      </View>
-    </View>
-  );
-}
-
-function QuestionRow({ index, question, value, onAnswer }) {
-  const isBad = value === 'MAUVAIS';
-  return (
-    <BlurView
-      intensity={45}
-      tint="dark"
-      style={[styles.card, isBad && question.critical && styles.cardFlagged]}
-    >
-      <View style={styles.questionTop}>
-        <Text style={styles.questionIndex}>{index}</Text>
-        <Text style={styles.questionLabel}>{question.label}</Text>
-        {question.critical && <Text style={styles.criticalTag}>Critique</Text>}
-      </View>
-
-      <View style={styles.answerRow}>
-        <AnswerPill
-          label="Bon"
-          icon="checkmark"
-          selected={value === 'BON'}
-          tone="success"
-          onPress={() => onAnswer(question.id, 'BON')}
-        />
-        <AnswerPill
-          label="Mauvais"
-          icon="close"
-          selected={isBad}
-          tone="danger"
-          onPress={() => onAnswer(question.id, 'MAUVAIS')}
-        />
-      </View>
-
-      {isBad && (
-        <TextInput
-          style={[styles.input, styles.badComment]}
-          placeholder={question.critical ? 'Commentaire obligatoire pour un point critique' : 'Commentaire (facultatif)'}
-          placeholderTextColor={colors.placeholder}
-          multiline
-        />
-      )}
-    </BlurView>
-  );
-}
-
-const TONES = {
-  success: { color: colors.success, borderColor: colors.successBorder, backgroundColor: colors.successFill },
-  danger: { color: colors.danger, borderColor: colors.dangerBorder, backgroundColor: colors.dangerFill },
-};
-
-function AnswerPill({ label, icon, selected, tone, onPress }) {
-  const t = TONES[tone];
-  return (
-    <Pressable
-      onPress={() => {
-        Haptics.selectionAsync();
-        onPress();
-      }}
-      style={({ pressed }) => [
-        styles.answerPill,
-        selected && { borderColor: t.borderColor, backgroundColor: t.backgroundColor },
-        pressed && styles.pressed,
-      ]}
-    >
-      <Ionicons name={icon} size={16} color={selected ? t.color : colors.textDim} />
-      <Text style={[styles.answerText, selected && { color: t.color }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 // ─── Action bar: what the current tab lets you do ───────────────────────────
-function ActionBar({ tab, reportReady, onOpenReport }) {
-  // the chat's composer is its own action bar
-  if (tab === 'ask') return null;
+function ActionBar({ tab, onOpenReport }) {
+  // the chat's composer is its own action bar, and the report sheet has its own Envoyer button
+  if (tab !== 'details') return null;
 
   return (
     <View style={styles.actionBar}>
-      {tab === 'details' ? (
-        <>
-          <BarButton label="Bloquer" icon="hand-left-outline" variant="warning" />
-          <BarButton label="Ouvrir le rapport" icon="arrow-forward" variant="primary" iconRight onPress={onOpenReport} />
-        </>
-      ) : (
-        <>
-          <BarButton label="Brouillon" icon="save-outline" variant="ghost" />
-          <BarButton label="Envoyer" icon="send" variant="primary" iconRight disabled={!reportReady} />
-        </>
-      )}
+      <BarButton label="Bloquer" icon="hand-left-outline" variant="warning" />
+      <BarButton label="Ouvrir le rapport" icon="arrow-forward" variant="primary" iconRight onPress={onOpenReport} />
     </View>
   );
 }
 
 const BAR_VARIANTS = {
-  ghost: { color: colors.textStrong, borderColor: colors.glassBorderStrong, backgroundColor: colors.glassFill },
   warning: { color: colors.warning, borderColor: colors.warningBorder, backgroundColor: colors.warningFill },
 };
 
@@ -492,13 +371,13 @@ function BarButton({ label, icon, variant, iconRight, disabled, onPress }) {
 }
 
 // ─── Bottom tab bar: Details · Ask · Report ─────────────────────────────────
-function TaskTabBar({ active, onChange, reportBadge }) {
+function TaskTabBar({ active, onChange, reportBadge, reportDone }) {
   return (
     <View style={styles.tabBar}>
       {TABS.map((t) => {
         const focused = active === t.key;
         const color = focused ? colors.accent : colors.textFaint;
-        const showCheck = t.key === 'report' && !reportBadge;
+        const showCheck = t.key === 'report' && reportDone;
         return (
           <Pressable
             key={t.key}
@@ -611,15 +490,29 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
+  // the sheet spaces its own cards, so no gap here
+  reportContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+  noReport: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  centeredText: {
+    textAlign: 'center',
+  },
   card: {
     borderRadius: radius.bubble,
     padding: 16,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.glassBorder,
-  },
-  cardFlagged: {
-    borderColor: colors.dangerBorder,
   },
   sectionLabel: {
     fontSize: 11,
@@ -638,18 +531,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     color: colors.textFaint,
-  },
-  input: {
-    minHeight: 44,
-    borderRadius: radius.banner,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    backgroundColor: colors.glassFill,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: colors.text,
-    textAlignVertical: 'top',
   },
 
   // details
@@ -821,154 +702,6 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: colors.accentDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // report
-  tags: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  typeTag: {
-    overflow: 'hidden',
-    borderRadius: radius.pill,
-    backgroundColor: colors.accentBubble,
-    paddingHorizontal: 9,
-    paddingVertical: 2,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.accent,
-  },
-  version: {
-    fontSize: 12,
-    color: colors.textFaint,
-  },
-  reportTitle: {
-    marginTop: 6,
-    fontSize: 19,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  prefillRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  prefilled: {
-    flex: 1,
-    gap: 6,
-    borderRadius: radius.banner,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.glassBorderStrong,
-    padding: 12,
-  },
-  prefilledValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  prefilledValue: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  progressLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  progressCount: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.track,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: colors.accent,
-  },
-  questionTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  questionIndex: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    overflow: 'hidden',
-    textAlign: 'center',
-    lineHeight: 22,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-    backgroundColor: colors.glassFill,
-  },
-  questionLabel: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 21,
-    color: colors.text,
-  },
-  criticalTag: {
-    overflow: 'hidden',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.warningBorder,
-    paddingHorizontal: 7,
-    paddingVertical: 1,
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.warning,
-  },
-  answerRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  answerPill: {
-    flex: 1,
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    backgroundColor: colors.glassFill,
-  },
-  answerText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textDim,
-  },
-  badComment: {
-    marginTop: 10,
-  },
-  commentRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 8,
-  },
-  micButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    backgroundColor: colors.glassFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -2,9 +2,11 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+//ngrok http 8080 --url=https://language-tribesman-backslid.ngrok-free.dev
 
 import { HapticTab } from '@/components/haptic-tab';
 import { colors } from '@/constants/app-theme';
+import { tabsFor } from '@/constants/role-tabs';
 import { useSession } from '@/contexts/session-provider';
 
 // Icons come from Ionicons rather than IconSymbol because every screen in this
@@ -19,6 +21,8 @@ const ICONS = {
   ask: ['chatbubbles', 'chatbubbles-outline'],
   forms: ['clipboard', 'clipboard-outline'],
   tasks: ['checkbox', 'checkbox-outline'],
+  orders: ['list', 'list-outline'],
+  review: ['checkmark-done-circle', 'checkmark-done-circle-outline'],
 } as const;
 
 function tabIcon(name: keyof typeof ICONS) {
@@ -28,14 +32,18 @@ function tabIcon(name: keyof typeof ICONS) {
 }
 
 export default function TabLayout() {
-  // Technicians (role USER) work from their tasks: uploading documents and the
-  // standalone Forms list are for managers and admins. href: null removes the
-  // tab from the bar; it does not protect the route — the backend still has to.
+  // Each role sees its own tabs (constants/role-tabs.ts). href: null removes a tab from
+  // the bar; it does not protect the route — the backend still has to.
   const { role } = useSession();
-  const managerOnly = role === 'USER' ? null : undefined;
+  const allowed = tabsFor(role);
+  const show = (name: string) => (allowed.includes(name) ? undefined : null);
 
   return (
+    // initialRouteName: open on the role's first tab after login. Without it React Navigation
+    // opens the first tab listed below, even when that one is hidden. It has to be this prop:
+    // unstable_settings.initialRouteName only reorders tabs that aren't listed.
     <Tabs
+      initialRouteName={allowed[0]}
       screenOptions={{
         headerShown: false,
         tabBarButton: HapticTab,
@@ -62,28 +70,40 @@ export default function TabLayout() {
       }}>
       <Tabs.Screen
         name="document"
-        options={{ title: 'Documents', tabBarIcon: tabIcon('document') }}
+        options={{ title: 'Documents', tabBarIcon: tabIcon('document'), href: show('document') }}
       />
     
       <Tabs.Screen
         name="upload"
-        options={{ title: 'Importer', tabBarIcon: tabIcon('upload'), href: managerOnly }}
+        options={{ title: 'Importer', tabBarIcon: tabIcon('upload'), href: show('upload') }}
       />
       <Tabs.Screen
         name="ask"
-        options={{ title: 'Assistant', tabBarIcon: tabIcon('ask') }}
+        options={{ title: 'Assistant', tabBarIcon: tabIcon('ask'), href: show('ask') }}
+      />
+      <Tabs.Screen
+        name="task"
+        options={{ title: 'Tâche', tabBarIcon: tabIcon('tasks'), href: show('task') }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{ title: 'Ordres', tabBarIcon: tabIcon('orders'), href: show('orders') }}
+      />
+      <Tabs.Screen
+        name="review"
+        options={{ title: 'Revue', tabBarIcon: tabIcon('review'), href: show('review') }}
       />
       <Tabs.Screen
         name="forms"
-        options={{ title: 'Formulaires', tabBarIcon: tabIcon('forms')}}
+        options={{ title: 'Formulaires', tabBarIcon: tabIcon('forms'), href: show('forms') }}
       />
       <Tabs.Screen
         name="tasks"
-        options={{ title: 'Tâches', tabBarIcon: tabIcon('tasks') }}
+        options={{ title: 'Tâches', tabBarIcon: tabIcon('tasks'), href: show('tasks') }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profil', tabBarIcon: tabIcon('profile') }}
+        options={{ title: 'Profil', tabBarIcon: tabIcon('profile'), href: show('profile') }}
       />
       {/* Expo Router turns every file in this directory into a route, and any
           route without an explicit <Tabs.Screen> still gets its own tab. These

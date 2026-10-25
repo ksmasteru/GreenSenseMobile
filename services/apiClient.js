@@ -545,6 +545,39 @@ export async function getInspectionForm(id) {
   }
 }
 
+// Matches ImageController — POST /api/v1/images, multipart field `image` plus an
+// optional `equipementId`. A photo is stored on its own as soon as it's taken; the
+// sheet sent later only carries the returned imageId as the IMAGE answer's value.
+// Resolves to { result: { imageId, name, contentType, size } } or { error: message }.
+export async function uploadChecklistImage(asset, equipementId) {
+  const formData = new FormData();
+  // RN's FormData wants a {uri, name, type} descriptor for files, same as
+  // uploadFile(). The server only takes JPEG, PNG and WebP.
+  formData.append('image', {
+    uri: asset.uri,
+    name: asset.fileName || 'photo.jpg',
+    type: asset.mimeType || 'image/jpeg',
+  });
+  if (equipementId) formData.append('equipementId', equipementId);
+
+  try {
+    const response = await fetch(API_URL + '/api/v1/images', {
+      method: 'POST',
+      // No Content-Type on purpose: multipart needs a boundary only the
+      // runtime can generate, and setting the header by hand strips it.
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+      body: formData,
+    });
+    const data = safeParse(await response.text());
+    if (response.ok) return { result: data };
+    console.error('photo refused', response.status, data);
+    return { error: data?.message || `Photo refusée (${response.status}), réessayer.` };
+  } catch (error) {
+    console.error('uploadChecklistImage failed', error);
+    return { error: 'Envoi de la photo impossible : vérifier la connexion.' };
+  }
+}
+
 // Matches SubmissionController — POST /api/v1/submissions.
 // Unlike the other calls here, a refusal must reach the screen: the server
 // re-checks the sheet and says why it rejects it ("comment required for
@@ -573,6 +606,27 @@ export async function submitChecklist(submission) {
   } catch (error) {
     console.error('submitChecklist failed', error);
     return { errors: ['Envoi impossible : vérifier la connexion.'] };
+  }
+}
+
+// GET /api/v1/submissions/{id}: a sent sheet as data, the SubmissionReport the PDF is built
+// from: { title, type, version, instructions, submissionId, equipment, inspectionDate,
+// inspector, submittedAt, status, remarks, answers: [{ position, labelFr, labelAr, critical,
+// value, comment, photo }] }, values already formatted ("06/10/2026"), value "bon" / "mauvais"
+// or the typed text, photo a data URI. Readable by its author and by the manager who created
+// its task; anyone else gets a 404. Resolves to { result } or { error: message }.
+export async function getSubmissionReport(submissionId) {
+  try {
+    const response = await fetch(API_URL + `/api/v1/submissions/${submissionId}`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    const data = safeParse(await response.text());
+    if (response.ok) return { result: data };
+    console.error('submission report refused', response.status, data);
+    return { error: data?.message || `Le rapport n'a pas pu être chargé (${response.status}).` };
+  } catch (error) {
+    console.error('getSubmissionReport failed', error);
+    return { error: 'Le rapport n\'a pas pu être chargé. Vérifiez votre connexion et réessayez.' };
   }
 }
 
@@ -640,6 +694,74 @@ export async function getMyTasks() {
   }
 }
 
+// Matches TaskController — GET /api/v1/task/assigned: the active tasks the signed-in
+// manager assigned (ASSIGNED / STARTED / BLOCKED / RETURNED), same lines as /mine plus
+// technicianEmail. A technician gets a 403, so the body is read for the server's reason.
+// Resolves to { result: { tasks, tasksCount } } or { error: message }.
+export async function getAssignedTasks() {
+  try {
+    const response = await fetch(API_URL + '/api/v1/task/assigned', {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    const data = safeParse(await response.text());
+    if (response.ok) return { result: data };
+    console.error('assigned tasks refused', response.status, data);
+    return { error: data?.message || `La liste n'a pas pu être chargée (${response.status}).` };
+  } catch (error) {
+    console.error('getAssignedTasks failed', error);
+    return { error: 'La liste n\'a pas pu être chargée. Vérifiez votre connexion et réessayez.' };
+  }
+}
+
+// Matches TaskController — GET /api/v1/task/review: the signed-in manager's SUBMITTED
+// tasks, oldest submission first, each joined to its latest report (see ReviewTasks in
+// the backend's API.md). 403 for a technician, so the body is read for the reason.
+// Resolves to { result: { tasks, tasksCount } } or { error: message }.
+export async function getReviewTasks() {
+  try {
+    const response = await fetch(API_URL + '/api/v1/task/review', {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    const data = safeParse(await response.text());
+    if (response.ok) return { result: data };
+    console.error('review tasks refused', response.status, data);
+    return { error: data?.message || `La liste n'a pas pu être chargée (${response.status}).` };
+  } catch (error) {
+    console.error('getReviewTasks failed', error);
+    return { error: 'La liste n\'a pas pu être chargée. Vérifiez votre connexion et réessayez.' };
+  }
+}
+
+// The manager's review of a SUBMITTED task. Both routes are planned in TaskController but
+// still commented out there, so until they exist the server's 404 comes back as the error.
+//   approve → POST /api/v1/task/{id}/approve                        (SUBMITTED -> APPROVED)
+//   return  → POST /api/v1/task/{id}/return  with { comment }       (SUBMITTED -> RETURNED)
+// Each resolves to { result } on success or { error: message } on any failure.
+async function reviewTask(taskId, action, body) {
+  try {
+    const response = await fetch(API_URL + `/api/v1/task/${taskId}/${action}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = safeParse(await response.text());
+    if (response.ok) return { result: data };
+    console.error(`${action} task refused`, response.status, data);
+    return { error: data?.message || `Action refusée (${response.status}), réessayer.` };
+  } catch (error) {
+    console.error(`${action}Task failed`, error);
+    return { error: 'Envoi impossible : vérifier la connexion.' };
+  }
+}
+
+export const approveTask = (taskId) => reviewTask(taskId, 'approve');
+
+// the comment tells the technician what to redo; the task goes back to them as RETURNED
+export const returnTask = (taskId, comment) => reviewTask(taskId, 'return', { comment });
+
 // Matches TaskController — POST /api/v1/task/{id}/start (ASSIGNED -> STARTED).
 // Resolves to true when the server accepted it. fetch doesn't throw on a
 // 409 the way axios does on the web, so response.ok is what decides.
@@ -677,6 +799,57 @@ export async function declineTask(taskId, reason, comment) {
   }
 }
 
+// Matches TaskController — POST /api/v1/task/new with TaskCreationDto
+// { title, taskType, technicianEmail, equipmentId, instructions, dueDate,
+// priority, templateId }, templateId being an active checklist's id.
+// The manager comes from the token, not the body. Same refusal handling as
+// submitChecklist(): the server says why it rejects the order ("user x is not
+// a technician"), so the body is read on both paths. Resolves to
+// { result: { id } } on success, or { errors: [message, …] } on any failure.
+export async function createTask(task) {
+  try {
+    const response = await fetch(API_URL + '/api/v1/task/new', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(task),
+    });
+    const data = safeParse(await response.text());
+    if (response.ok) return { result: data };
+
+    console.error('task creation refused', response.status, data);
+    const fieldErrors = data?.errors ? Object.values(data.errors) : [];
+    if (fieldErrors.length) return { errors: fieldErrors };
+    return { errors: [data?.message || `Création refusée (${response.status}), réessayer.`] };
+  } catch (error) {
+    console.error('createTask failed', error);
+    return { errors: ['Envoi impossible : vérifier la connexion.'] };
+  }
+}
+
+export async function fetchTechnicians()
+{
+  try {
+    const response = await fetch(API_URL + '/api/v1/users/technicians',{
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    if (!response.ok)
+    {
+      const text = await response.text();
+      console.error('error while fetching technicians : ', response.status, text);
+      return null; //important !!
+    }
+    return await response.json();
+  }
+  catch (error)
+  {
+    console.log('fetchTechnicians failed: ', error);
+    return null;
+  }
+}
 function safeParse(text) {
   try {
     return JSON.parse(text);
